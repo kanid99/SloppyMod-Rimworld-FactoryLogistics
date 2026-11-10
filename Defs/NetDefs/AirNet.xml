@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!--
+    The tubes are a Vanilla Expanded Framework pipe network whose resource is compressed air.
+    Nothing travels down them as far as the framework is concerned except that air: a capsule
+    is moved in code from a sender to its receiver, and the network is asked two things -
+    are both stations on the same net, and is there enough air in the tanks to fire.
+
+    One unit is one litre of air at pressure. All per-tick figures on the comps are per network
+    tick, which the framework runs every 100 game ticks.
+  -->
+  <PipeSystem.PipeNetDef>
+    <defName>SloppyTubes_AirNet</defName>
+    <resource>
+      <name>Compressed air</name>
+      <unit>L</unit>
+      <color>(0.56, 0.74, 0.82)</color>
+      <!-- Drawn over a station that is getting no air. -->
+      <offTexPath>UI/Overlays/SloppyTubes/NoAir</offTexPath>
+    </resource>
+    <pipeDefs>
+      <li>SloppyTubes_Tube</li>
+    </pipeDefs>
+    <overlayOptions>
+      <overlayColor>(0.56, 0.74, 0.82)</overlayColor>
+    </overlayOptions>
+    <!-- Launches come out of the tanks, so a network with a compressor and no tank can never
+         send. The framework's own alert says so. -->
+    <noStorageAlert>true</noStorageAlert>
+  </PipeSystem.PipeNetDef>
+
+  <ThingDef ParentName="BuildingBase">
+    <defName>SloppyTubes_Tube</defName>
+    <label>pneumatic tube</label>
+    <description>A sealed tube that carries compressed air, and with it capsules, between tube stations. Lay it touching an air compressor, at least one air tank and every station that should be able to reach the others. It can run under walls.\n\nA tube sender can only send to a receiver on the same run of tube.</description>
+    <thingClass>PipeSystem.Building_Pipe</thingClass>
+    <category>Building</category>
+    <graphicData>
+      <texPath>Things/Building/SloppyTubes/Tube_Atlas</texPath>
+      <graphicClass>Graphic_Single</graphicClass>
+      <!-- The built tube draws through the framework's own linked graphic, which links by
+           network. These only make blueprints and frames link with each other as they are laid. -->
+      <linkType>Basic</linkType>
+      <linkFlags>
+        <li>Custom9</li>
+      </linkFlags>
+      <damageData>
+        <rect>(0,0.35,1,0.3)</rect>
+      </damageData>
+    </graphicData>
+    <uiIconPath>Things/Building/SloppyTubes/Tube_MenuIcon</uiIconPath>
+    <altitudeLayer>Conduits</altitudeLayer>
+    <passability>Standable</passability>
+    <drawerType>MapMeshOnly</drawerType>
+    <building>
+      <isInert>true</isInert>
+      <isEdifice>false</isEdifice>
+      <ai_chillDestination>false</ai_chillDestination>
+      <canConstructInCorner>true</canConstructInCorner>
+    </building>
+    <statBases>
+      <MaxHitPoints>80</MaxHitPoints>
+      <WorkToBuild>60</WorkToBuild>
+      <Flammability>0.4</Flammability>
+      <Beauty>-2</Beauty>
+    </statBases>
+    <costList>
+      <Steel>2</Steel>
+    </costList>
+    <drawStyleCategory>Conduits</drawStyleCategory>
+    <rotatable>false</rotatable>
+    <selectable>true</selectable>
+    <neverMultiSelect>true</neverMultiSelect>
+    <clearBuildingArea>false</clearBuildingArea>
+    <leaveResourcesWhenKilled>false</leaveResourcesWhenKilled>
+    <soundImpactDefault>BulletImpact_Metal</soundImpactDefault>
+    <terrainAffordanceNeeded>Light</terrainAffordanceNeeded>
+    <constructEffect>ConstructMetal</constructEffect>
+    <designationCategory>Production</designationCategory>
+    <researchPrerequisites>
+      <li>SloppyTubes_PneumaticTubes</li>
+    </researchPrerequisites>
+    <comps>
+      <li Class="PipeSystem.CompProperties_Resource">
+        <pipeNet>SloppyTubes_AirNet</pipeNet>
+      </li>
+    </comps>
+    <placeWorkers>
+      <li>PipeSystem.PlaceWorker_Pipe</li>
+    </placeWorkers>
+  </ThingDef>
+
+</Defs>

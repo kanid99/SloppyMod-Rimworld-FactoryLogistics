@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!-- The empty shell: used up by a pack bill, handed back by an unpack bill. -->
+  <ThingDef ParentName="ResourceBase">
+    <defName>SloppyTubes_CapsuleShell</defName>
+    <label>capsule shell</label>
+    <description>An empty pneumatic tube capsule. A packing bench fills one with goods and seals it; unpacking a capsule at the far end gives the shell back, so a colony needs only enough of them to cover what is in the tubes at once.</description>
+    <graphicData>
+      <texPath>Things/Item/SloppyTubes/CapsuleShell</texPath>
+      <graphicClass>Graphic_Single</graphicClass>
+    </graphicData>
+    <stackLimit>25</stackLimit>
+    <statBases>
+      <MaxHitPoints>70</MaxHitPoints>
+      <MarketValue>4</MarketValue>
+      <Mass>0.4</Mass>
+      <Flammability>0.2</Flammability>
+      <DeteriorationRate>0.5</DeteriorationRate>
+    </statBases>
+    <thingCategories>
+      <li>Manufactured</li>
+    </thingCategories>
+    <soundInteract>Metal_Drop</soundInteract>
+    <soundDrop>Metal_Drop</soundDrop>
+  </ThingDef>
+
+  <!--
+    A packed capsule, in its two states. They are two defs and not one def with a flag so that
+    vanilla's own filters can tell them apart: sending stations store only the first, and the
+    unpack bill takes only the second. A capsule changes from one to the other when it is sent
+    (SloppyTubes.TubeCapsule.ConvertTo).
+
+    tickerType Normal because the contents keep ticking inside, so packed food still rots.
+  -->
+  <ThingDef Name="SloppyTubes_CapsuleBase" ParentName="ResourceBase" Abstract="True">
+    <thingClass>SloppyTubes.TubeCapsule</thingClass>
+    <tickerType>Normal</tickerType>
+    <stackLimit>1</stackLimit>
+    <statBases>
+      <MaxHitPoints>70</MaxHitPoints>
+      <MarketValue>4</MarketValue>
+      <Mass>0.4</Mass>
+      <Flammability>0.2</Flammability>
+      <DeteriorationRate>0.5</DeteriorationRate>
+    </statBases>
+    <thingCategories>
+      <li>Manufactured</li>
+    </thingCategories>
+    <tradeability>None</tradeability>
+    <soundInteract>Metal_Drop</soundInteract>
+    <soundDrop>Metal_Drop</soundDrop>
+  </ThingDef>
+
+  <ThingDef ParentName="SloppyTubes_CapsuleBase">
+    <defName>SloppyTubes_Capsule</defName>
+    <label>packed capsule</label>
+    <description>A sealed pneumatic tube capsule with goods inside, waiting to be sent. Haulers take it to the tube sender it is addressed to; select it to change which sender that is, or to mark it for unpacking where it is.</description>
+    <graphicData>
+      <texPath>Things/Item/SloppyTubes/Capsule</texPath>
+      <graphicClass>Graphic_Single</graphicClass>
+    </graphicData>
+  </ThingDef>
+
+  <ThingDef ParentName="SloppyTubes_CapsuleBase">
+    <defName>SloppyTubes_CapsuleDelivered</defName>
+    <label>delivered capsule</label>
+    <description>A pneumatic tube capsule that has arrived and is waiting to be unpacked at a packing bench. Select it to send it onward through another tube sender unopened.</description>
+    <graphicData>
+      <texPath>Things/Item/SloppyTubes/CapsuleDelivered</texPath>
+      <graphicClass>Graphic_Single</graphicClass>
+    </graphicData>
+  </ThingDef>
+
+</Defs>
