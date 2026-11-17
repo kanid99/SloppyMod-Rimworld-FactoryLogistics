@@ -1,0 +1,70 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The whole mod is one assembly, and it is built on Vanilla Expanded Framework's pipe system:
+    the tubes are a PipeSystem network carrying compressed air, and the stations are consumers
+    on it. The framework is a hard dependency (About.xml), so the reference is unconditional.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>FactoryLogistics</RootNamespace>
+    <AssemblyName>FactoryLogistics</AssemblyName>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <OutputPath>..\..\Assemblies\</OutputPath>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <DebugType>portable</DebugType>
+
+    <!-- Point this at your local RimWorld install (folder containing RimWorldWin64_Data). -->
+    <RimWorldManagedDir Condition="'$(RimWorldManagedDir)' == ''">C:\Program Files (x86)\Steam\steamapps\common\RimWorld\RimWorldWin64_Data\Managed</RimWorldManagedDir>
+
+    <!--
+      Same two ways to find RimWorld as the other SloppyMods projects: the install's own DLLs
+      when the Managed folder exists, otherwise Krafs.Rimworld.Ref from NuGet, which is what
+      lets this build in CI or a container. Override with -p:UseLocalRimWorldRefs=true|false.
+    -->
+    <UseLocalRimWorldRefs Condition="'$(UseLocalRimWorldRefs)' == '' And Exists('$(RimWorldManagedDir)\Assembly-CSharp.dll')">true</UseLocalRimWorldRefs>
+    <UseLocalRimWorldRefs Condition="'$(UseLocalRimWorldRefs)' == ''">false</UseLocalRimWorldRefs>
+
+    <!-- Keep this in step with the RimWorld version in About.xml. -->
+    <RimWorldRefVersion>1.6.4871</RimWorldRefVersion>
+
+    <!--
+      Vanilla Expanded Framework's PipeSystem.dll. Not on NuGet, so it is found where the
+      framework is installed - Steam Workshop item 2023507013 by default. Point it elsewhere
+      with -p:PipeSystemDll="<path>\PipeSystem.dll".
+    -->
+    <PipeSystemDll Condition="'$(PipeSystemDll)' == ''">C:\Program Files (x86)\Steam\steamapps\workshop\content\294100\2023507013\1.6\Assemblies\PipeSystem.dll</PipeSystemDll>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(UseLocalRimWorldRefs)' == 'true'">
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(RimWorldManagedDir)\Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(RimWorldManagedDir)\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.IMGUIModule">
+      <HintPath>$(RimWorldManagedDir)\UnityEngine.IMGUIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(UseLocalRimWorldRefs)' != 'true'">
+    <PackageReference Include="Krafs.Rimworld.Ref" Version="$(RimWorldRefVersion)" ExcludeAssets="runtime" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+
+    <Reference Include="PipeSystem">
+      <HintPath>$(PipeSystemDll)</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

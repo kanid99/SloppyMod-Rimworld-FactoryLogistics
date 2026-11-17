@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+
+  <!-- Capsules -->
+  <FactoryLogistics.Empty>empty</FactoryLogistics.Empty>
+  <FactoryLogistics.ContentsAndMore>{0} and {1} more</FactoryLogistics.ContentsAndMore>
+  <FactoryLogistics.CapsuleContents>Contains: {0}</FactoryLogistics.CapsuleContents>
+  <FactoryLogistics.CapsuleAssigned>Addressed to: {0}</FactoryLogistics.CapsuleAssigned>
+  <FactoryLogistics.CapsuleUnassigned>Not addressed to a tube sender. It will be stored like any other item until one is chosen.</FactoryLogistics.CapsuleUnassigned>
+
+  <FactoryLogistics.AssignSender>Address to sender</FactoryLogistics.AssignSender>
+  <FactoryLogistics.AssignSenderDesc>Choose which tube sender this capsule goes to. Haulers will take it there and it will be sent to that sender's destination.\n\nApplies to every packed capsule selected.</FactoryLogistics.AssignSenderDesc>
+  <FactoryLogistics.AssignNone>No sender (store it)</FactoryLogistics.AssignNone>
+  <FactoryLogistics.NoSenders>No tube senders on this map</FactoryLogistics.NoSenders>
+  <FactoryLogistics.SendOnward>Send onward</FactoryLogistics.SendOnward>
+  <FactoryLogistics.SendOnwardDesc>Send this capsule on through another tube sender without opening it. It stops being a delivered capsule, so unpack bills will leave it alone.\n\nApplies to every delivered capsule selected.</FactoryLogistics.SendOnwardDesc>
+  <FactoryLogistics.MarkForUnpacking>Mark for unpacking</FactoryLogistics.MarkForUnpacking>
+  <FactoryLogistics.MarkForUnpackingDesc>Treat this capsule as delivered where it is, so an unpack bill at a packing bench will open it. Use it for a capsule that was packed and never sent.\n\nApplies to every packed capsule selected.</FactoryLogistics.MarkForUnpackingDesc>
+
+  <!-- Stations -->
+  <FactoryLogistics.Rename>Rename</FactoryLogistics.Rename>
+  <FactoryLogistics.RenameDesc>Give this station a name. The name is what bills, capsules and other stations show when they refer to it.</FactoryLogistics.RenameDesc>
+
+  <FactoryLogistics.SetDestination>Set destination</FactoryLogistics.SetDestination>
+  <FactoryLogistics.SetDestinationDesc>Choose the tube receiver this sender fires its capsules to. A sender has one destination; a receiver can be the destination of any number of senders.</FactoryLogistics.SetDestinationDesc>
+  <FactoryLogistics.DestinationNone>No destination</FactoryLogistics.DestinationNone>
+  <FactoryLogistics.NoDestinationShort>no destination</FactoryLogistics.NoDestinationShort>
+  <FactoryLogistics.NotLinkedShort>not on these tubes</FactoryLogistics.NotLinkedShort>
+
+  <FactoryLogistics.SenderDestination>Sends to: {0}</FactoryLogistics.SenderDestination>
+  <FactoryLogistics.SenderReady>Ready to send.</FactoryLogistics.SenderReady>
+  <FactoryLogistics.SenderLaunching>Sending.</FactoryLogistics.SenderLaunching>
+  <FactoryLogistics.SenderBlocked>Cannot send: {0}</FactoryLogistics.SenderBlocked>
+  <FactoryLogistics.LaunchCost>Air per capsule: {0} L</FactoryLogistics.LaunchCost>
+
+  <FactoryLogistics.BlockNoDestination>no destination chosen</FactoryLogistics.BlockNoDestination>
+  <FactoryLogistics.BlockNoAir>no air pressure</FactoryLogistics.BlockNoAir>
+  <FactoryLogistics.BlockNotLinked>no tube to its destination</FactoryLogistics.BlockNotLinked>
+  <FactoryLogistics.BlockDestinationNoAir>its destination has no air pressure</FactoryLogistics.BlockDestinationNoAir>
+  <FactoryLogistics.BlockDestinationFull>its destination is full</FactoryLogistics.BlockDestinationFull>
+  <FactoryLogistics.BlockLowPressure>waiting for the air tanks to refill</FactoryLogistics.BlockLowPressure>
+
+  <FactoryLogistics.ReceiverHolding>Holding {0} of {1} capsules.</FactoryLogistics.ReceiverHolding>
+  <FactoryLogistics.ReceiverInTransit>On their way here: {0}</FactoryLogistics.ReceiverInTransit>
+  <FactoryLogistics.ReceiverNoAir>No air pressure: nothing can be sent here.</FactoryLogistics.ReceiverNoAir>
+
+  <!-- Bills -->
+  <FactoryLogistics.BillNeedsShell>1 capsule shell</FactoryLogistics.BillNeedsShell>
+  <FactoryLogistics.BillNeedsCargo>{0}% of a full stack of the goods being packed</FactoryLogistics.BillNeedsCargo>
+  <FactoryLogistics.CountDescription>the goods this bill packs, at its tube sender's destination or on their way there</FactoryLogistics.CountDescription>
+
+  <!-- Alert -->
+  <FactoryLogistics.AlertBlocked>Tube sender blocked</FactoryLogistics.AlertBlocked>
+  <FactoryLogistics.AlertBlockedDesc>A tube sender has a capsule to send and cannot send it. Select the sender to see why: it may have no destination chosen, the tube to its destination may be cut, or the network may have lost air pressure (check the compressor's power and that it has not broken down).</FactoryLogistics.AlertBlockedDesc>
+
+</LanguageData>

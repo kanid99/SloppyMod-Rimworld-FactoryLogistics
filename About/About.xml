@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ModMetaData>
+  <name>SloppyMods Factory Logistics</name>
+  <author>SloppyMod</author>
+  <packageId>sloppymod.factorylogistics</packageId>
+  <modVersion>0.9.4</modVersion>
+  <!-- 1.6 and 1.7 (1.7 runs the 1.6 assembly unchanged), not earlier, for the same reason as the
+       other SloppyMods mods: the assembly is built against 1.6 signatures (Thing.Tick is protected
+       there and was public in 1.4/1.5), so it cannot load on earlier versions. -->
+  <supportedVersions>
+    <li>1.6</li>
+    <li>1.7</li>
+  </supportedVersions>
+  <description>Build 0.9.4
+
+Moving goods around a colony without hauling them by hand.
+
+[Pneumatic tubes]
+A pneumatic tube network for moving goods around a colony quickly.
+
+Lay compressed air tubes between rooms, put an air compressor and an air tank on them, and build tube senders and receivers where goods should go in and come out. Each sender is pointed at one receiver; a receiver can take from any number of senders.
+
+Goods travel in capsules. A packing bench has ordinary bills: pick what to pack and how far to fetch it from, and set the bill to take its capsules to a tube sender, the same way a bill is told to take its product to a stockpile. The packer carries each capsule to the sender and it is fired down the tube. At the far end an unpack bill opens it, and the empty shell is kept to be used again.
+
+Because they are real bills, "do until you have X" works: it counts the goods at the sender's destination and on their way there, so a bill can keep a kitchen or a workshop stocked and stop when it is.
+
+The compressor idles while the air tanks are full and runs flat out to refill them after every capsule, so a busy network shows up on the power grid. If the compressor loses power or breaks down, the tubes stop until it is back.
+
+[Coming next: conveyor arms]
+With Vanilla Furniture Expanded - Factory installed, a conveyor arm that loads its belts from your storage and feeds its machines, calling for exactly what each machine's current process still needs. Without that mod, this part simply does not load.
+
+Requires Vanilla Expanded Framework (the tubes are built on its pipe network). Vanilla Furniture Expanded - Factory is optional.</description>
+  <modDependencies>
+    <li>
+      <packageId>OskarPotocki.VanillaFactionsExpanded.Core</packageId>
+      <displayName>Vanilla Expanded Framework</displayName>
+      <steamWorkshopUrl>https://steamcommunity.com/sharedfiles/filedetails/?id=2023507013</steamWorkshopUrl>
+    </li>
+  </modDependencies>
+  <loadAfter>
+    <li>OskarPotocki.VanillaFactionsExpanded.Core</li>
+    <li>VanillaExpanded.VFEFactory</li>
+  </loadAfter>
+</ModMetaData>

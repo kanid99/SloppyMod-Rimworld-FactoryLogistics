@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <RecipeDef>
+    <defName>FL_MakeCapsuleShells</defName>
+    <label>make capsule shells</label>
+    <description>Make five empty pneumatic tube capsules from steel.</description>
+    <jobString>Making capsule shells.</jobString>
+    <workAmount>1200</workAmount>
+    <workSpeedStat>GeneralLaborSpeed</workSpeedStat>
+    <workSkill>Crafting</workSkill>
+    <effectWorking>Smith</effectWorking>
+    <soundWorking>Recipe_Machining</soundWorking>
+    <ingredients>
+      <li>
+        <filter>
+          <thingDefs>
+            <li>Steel</li>
+          </thingDefs>
+        </filter>
+        <count>20</count>
+      </li>
+    </ingredients>
+    <fixedIngredientFilter>
+      <thingDefs>
+        <li>Steel</li>
+      </thingDefs>
+    </fixedIngredientFilter>
+    <products>
+      <FL_CapsuleShell>5</FL_CapsuleShell>
+    </products>
+    <recipeUsers>
+      <li>TableMachining</li>
+      <li>ElectricSmithy</li>
+      <li>FueledSmithy</li>
+    </recipeUsers>
+    <researchPrerequisite>FL_PneumaticTubes</researchPrerequisite>
+  </RecipeDef>
+
+  <!--
+    Packing. The bill is a completely ordinary one - ingredient filter, search radius, repeat
+    modes, "take to" - and three classes bend it into shape:
+
+      workerClass                  RecipeWorker_PackCapsule keeps the cargo, which vanilla would
+                                   destroy, and puts it in the capsule the recipe produces. It
+                                   also addresses the capsule to the tube sender the bill is set
+                                   to take its product to.
+
+      ingredientValueGetterClass   IngredientValueGetter_StackFraction counts cargo in stacks, so
+                                   the second ingredient's count is "this much of a full stack of
+                                   whatever it is". The counts stop just short of the round number
+                                   because vanilla rounds the division UP, and 1 / (1/75) lands a
+                                   hair above 75 in floating point.
+
+      workerCounterClass           RecipeWorkerCounter_PackCapsule makes "do until you have X"
+                                   count the cargo at the far end and on its way there.
+
+    A bill wants its whole amount before it starts, so a full-stack bill will not ship the last
+    forty steel in range. That is what the smaller sizes are for.
+
+    The default filter allows nothing: a new pack bill ships nothing until it is told what to
+    ship. With the whole item tree allowed by default, adding a bill would start emptying the
+    room into capsules before the dialog was closed.
+  -->
+  <RecipeDef Name="FL_PackBase" Abstract="True">
+    <description>Pack goods into a capsule shell and seal it. Choose what to pack in the bill's filter, and set the bill to take its capsules to a tube sender to have them sent as they are made.\n\n"Do until you have X" counts the chosen goods at that sender's destination: in the receiving station's room, in capsules waiting there, and on the way.</description>
+    <jobString>Packing a capsule.</jobString>
+    <workAmount>150</workAmount>
+    <workSpeedStat>GeneralLaborSpeed</workSpeedStat>
+    <workerClass>FactoryLogistics.RecipeWorker_PackCapsule</workerClass>
+    <workerCounterClass>FactoryLogistics.RecipeWorkerCounter_PackCapsule</workerCounterClass>
+    <ingredientValueGetterClass>FactoryLogistics.IngredientValueGetter_StackFraction</ingredientValueGetterClass>
+    <fixedIngredientFilter>
+      <categories>
+        <li>Root</li>
+      </categories>
+      <disallowedThingDefs>
+        <li>FL_Capsule</li>
+        <li>FL_CapsuleDelivered</li>
+      </disallowedThingDefs>
+    </fixedIngredientFilter>
+    <defaultIngredientFilter>
+      <disallowedThingDefs>
+        <li>FL_Capsule</li>
+      </disallowedThingDefs>
+    </defaultIngredientFilter>
+    <products>
+      <FL_Capsule>1</FL_Capsule>
+    </products>
+    <recipeUsers>
+      <li>FL_PackingBench</li>
+    </recipeUsers>
+  </RecipeDef>
+
+  <RecipeDef ParentName="FL_PackBase">
+    <defName>FL_PackFull</defName>
+    <label>pack a capsule (full stack)</label>
+    <displayPriority>300</displayPriority>
+    <ingredients>
+      <li>
+        <filter>
+          <thingDefs>
+            <li>FL_CapsuleShell</li>
+          </thingDefs>
+        </filter>
+        <count>1</count>
+      </li>
+      <li>
+        <filter>
+          <categories>
+            <li>Root</li>
+          </categories>
+          <disallowedThingDefs>
+            <li>FL_CapsuleShell</li>
+            <li>FL_Capsule</li>
+            <li>FL_CapsuleDelivered</li>
+          </disallowedThingDefs>
+        </filter>
+        <count>0.9999</count>
+      </li>
+    </ingredients>
+  </RecipeDef>
+
+  <RecipeDef ParentName="FL_PackBase">
+    <defName>FL_PackHalf</defName>
+    <label>pack a capsule (half stack)</label>
+    <displayPriority>290</displayPriority>
+    <ingredients>
+      <li>
+        <filter>
+          <thingDefs>
+            <li>FL_CapsuleShell</li>
+          </thingDefs>
+        </filter>
+        <count>1</count>
+      </li>
+      <li>
+        <filter>
+          <categories>
+            <li>Root</li>
+          </categories>
+          <disallowedThingDefs>
+            <li>FL_CapsuleShell</li>
+            <li>FL_Capsule</li>
+            <li>FL_CapsuleDelivered</li>
+          </disallowedThingDefs>
+        </filter>
+        <count>0.4999</count>
+      </li>
+    </ingredients>
+  </RecipeDef>
+
+  <RecipeDef ParentName="FL_PackBase">
+    <defName>FL_PackSmall</defName>
+    <label>pack a capsule (tenth of a stack)</label>
+    <displayPriority>280</displayPriority>
+    <ingredients>
+      <li>
+        <filter>
+          <thingDefs>
+            <li>FL_CapsuleShell</li>
+          </thingDefs>
+        </filter>
+        <count>1</count>
+      </li>
+      <li>
+        <filter>
+          <categories>
+            <li>Root</li>
+          </categories>
+          <disallowedThingDefs>
+            <li>FL_CapsuleShell</li>
+            <li>FL_Capsule</li>
+            <li>FL_CapsuleDelivered</li>
+          </disallowedThingDefs>
+        </filter>
+        <count>0.0999</count>
+      </li>
+    </ingredients>
+  </RecipeDef>
+
+  <!--
+    Unpacking. RecipeWorker_UnpackCapsule spills the capsule's contents at the bench before
+    vanilla destroys the capsule, and the product is the shell. Only delivered capsules are
+    ingredients, so a bench with both bills never opens what it has just packed.
+  -->
+  <RecipeDef>
+    <defName>FL_Unpack</defName>
+    <label>unpack a delivered capsule</label>
+    <description>Open a delivered capsule. Its contents are set down at the bench for haulers to put away, and the empty shell is kept.</description>
+    <jobString>Unpacking a capsule.</jobString>
+    <workAmount>100</workAmount>
+    <workSpeedStat>GeneralLaborSpeed</workSpeedStat>
+    <workerClass>FactoryLogistics.RecipeWorker_UnpackCapsule</workerClass>
+    <displayPriority>200</displayPriority>
+    <ingredients>
+      <li>
+        <filter>
+          <thingDefs>
+            <li>FL_CapsuleDelivered</li>
+          </thingDefs>
+        </filter>
+        <count>1</count>
+      </li>
+    </ingredients>
+    <fixedIngredientFilter>
+      <thingDefs>
+        <li>FL_CapsuleDelivered</li>
+      </thingDefs>
+    </fixedIngredientFilter>
+    <products>
+      <FL_CapsuleShell>1</FL_CapsuleShell>
+    </products>
+    <recipeUsers>
+      <li>FL_PackingBench</li>
+    </recipeUsers>
+  </RecipeDef>
+
+</Defs>

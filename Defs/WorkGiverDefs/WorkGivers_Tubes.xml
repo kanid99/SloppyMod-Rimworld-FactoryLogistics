@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!--
+    Packing and unpacking are hauling work: the job is fetching things, putting them in a
+    capsule and carrying the capsule to a station, and the pawns a colony leaves on hauling are
+    the ones it can spare for it. Changing workType here moves it to another column.
+  -->
+  <WorkGiverDef>
+    <defName>FL_DoBillsPackingBench</defName>
+    <label>pack and unpack tube capsules</label>
+    <giverClass>WorkGiver_DoBill</giverClass>
+    <workType>Hauling</workType>
+    <priorityInType>120</priorityInType>
+    <fixedBillGiverDefs>
+      <li>FL_PackingBench</li>
+    </fixedBillGiverDefs>
+    <verb>pack</verb>
+    <gerund>packing at</gerund>
+    <requiredCapacities>
+      <li>Manipulation</li>
+    </requiredCapacities>
+    <prioritizeSustains>true</prioritizeSustains>
+  </WorkGiverDef>
+
+</Defs>
