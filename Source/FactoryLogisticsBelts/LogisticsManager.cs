@@ -957,14 +957,40 @@ namespace FactoryLogistics.Belts
                 return false;
             }
 
+            // Only pick it up if it has somewhere to go. Taking it off the Feeder and putting it back
+            // every time the machine's spot was still occupied made it flicker back and forth.
+            IntVec3 slot = feeder.OutputCell;
+            if (!HasRoomOnCell(slot, thing))
+                return false;
+
             IntVec3 at = thing.Position;
             thing.DeSpawn();
-            if (GenPlace.TryPlaceThing(thing, feeder.OutputCell, map, ThingPlaceMode.Direct))
+            if (GenPlace.TryPlaceThing(thing, slot, map, ThingPlaceMode.Direct))
                 return true;
 
             if (!thing.Destroyed && !thing.Spawned)
                 GenSpawn.Spawn(thing, at, map);
             return false;
+        }
+
+        // Whether this item can be set down on the cell as it is now: it tops up a stack already
+        // there, or the cell holds fewer items than it allows (one on bare floor; more in storage).
+        private bool HasRoomOnCell(IntVec3 cell, Thing thing)
+        {
+            if (!cell.InBounds(map) || !cell.Walkable(map))
+                return false;
+            int items = 0;
+            List<Thing> things = cell.GetThingList(map);
+            for (int i = 0; i < things.Count; i++)
+            {
+                Thing other = things[i];
+                if (other.def.category != ThingCategory.Item)
+                    continue;
+                items++;
+                if (other.CanStackWith(thing) && other.stackCount + thing.stackCount <= other.def.stackLimit)
+                    return true;
+            }
+            return items < cell.GetMaxItemsAllowedInCell(map);
         }
 
         // Off the line: onto a free floor cell nearby that is not a belt or one of this module's
