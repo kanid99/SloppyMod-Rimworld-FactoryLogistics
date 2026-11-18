@@ -57,6 +57,12 @@ namespace FactoryLogistics.Belts
         public PropertyInfo capacityProp;
         public MethodInfo refusalMethod;
 
+        // A material spot (optional hook: IEnumerable<IntVec3> LogisticsResourceCells and
+        // List<ThingDefCountClass> LogisticsMaterialNeeds(IntVec3 cell)): the consumer names the
+        // exact materials and amounts still missing, and Loaders send exactly that much.
+        public MethodInfo materialsMethod;
+        public IntVec3 cell;
+
         // Why it will not take this item, if it can say (optional hook: string LogisticsRefusal(Thing)).
         public string Refusal(Thing item)
         {
@@ -475,24 +481,56 @@ namespace FactoryLogistics.Belts
                 PropertyInfo cellProp = type.GetProperty("LogisticsInputCell", flags);
                 MethodInfo accepts = type.GetMethod("LogisticsAccepts", flags, null, new[] { typeof(Thing) }, null);
                 PropertyInfo capacity = type.GetProperty("LogisticsCapacity", flags);
-                hook = cellProp != null && accepts != null && cellProp.PropertyType == typeof(IntVec3)
-                    ? new[] { cellProp.GetGetMethod(), accepts, capacity != null ? capacity.GetGetMethod() : null }
+                PropertyInfo resourceCells = type.GetProperty("LogisticsResourceCells", flags);
+                MethodInfo materials = type.GetMethod("LogisticsMaterialNeeds", flags, null, new[] { typeof(IntVec3) }, null);
+                bool item = cellProp != null && accepts != null && cellProp.PropertyType == typeof(IntVec3);
+                bool mats = resourceCells != null && materials != null
+                    && typeof(IEnumerable<IntVec3>).IsAssignableFrom(resourceCells.PropertyType)
+                    && typeof(List<ThingDefCountClass>).IsAssignableFrom(materials.ReturnType);
+                hook = item || mats
+                    ? new[]
+                    {
+                        item ? cellProp.GetGetMethod() : null,
+                        item ? accepts : null,
+                        item && capacity != null ? capacity.GetGetMethod() : null,
+                        mats ? resourceCells.GetGetMethod() : null,
+                        mats ? materials : null,
+                    }
                     : null;
                 HookCache[type] = hook;
             }
             if (hook == null)
                 return null;
 
-            IntVec3 input = (IntVec3)hook[0].Invoke(building, null);
-            if (input != slot)
-                return null;
+            if (hook[0] != null && (IntVec3)hook[0].Invoke(building, null) == slot)
+            {
+                Consumer consumer = new Consumer();
+                consumer.thing = building;
+                consumer.cell = slot;
+                consumer.acceptsMethod = hook[1];
+                consumer.capacityProp = hook[2] != null ? type.GetProperty("LogisticsCapacity", BindingFlags.Instance | BindingFlags.Public) : null;
+                consumer.refusalMethod = type.GetMethod("LogisticsRefusal", BindingFlags.Instance | BindingFlags.Public, null, new[] { typeof(Thing) }, null);
+                return consumer;
+            }
 
-            Consumer consumer = new Consumer();
-            consumer.thing = building;
-            consumer.acceptsMethod = hook[1];
-            consumer.capacityProp = hook[2] != null ? type.GetProperty("LogisticsCapacity", BindingFlags.Instance | BindingFlags.Public) : null;
-            consumer.refusalMethod = type.GetMethod("LogisticsRefusal", BindingFlags.Instance | BindingFlags.Public, null, new[] { typeof(Thing) }, null);
-            return consumer;
+            if (hook[3] != null)
+            {
+                IEnumerable<IntVec3> cells = hook[3].Invoke(building, null) as IEnumerable<IntVec3>;
+                if (cells != null)
+                {
+                    foreach (IntVec3 c in cells)
+                    {
+                        if (c != slot)
+                            continue;
+                        Consumer consumer = new Consumer();
+                        consumer.thing = building;
+                        consumer.cell = slot;
+                        consumer.materialsMethod = hook[4];
+                        return consumer;
+                    }
+                }
+            }
+            return null;
         }
 
         // ------------------------------------------------------------------ demand
@@ -504,6 +542,25 @@ namespace FactoryLogistics.Belts
                 return new List<Need>();
             if (consumer.vfe != null)
                 return NeedsOf(consumer.vfe);
+
+            if (consumer.materialsMethod != null)
+            {
+                List<Need> wanted = new List<Need>();
+                List<ThingDefCountClass> list = consumer.materialsMethod.Invoke(consumer.thing, new object[] { consumer.cell }) as List<ThingDefCountClass>;
+                if (list != null)
+                {
+                    foreach (ThingDefCountClass entry in list)
+                    {
+                        if (entry == null || entry.thingDef == null || entry.count <= 0)
+                            continue;
+                        Need material = new Need();
+                        material.thing = entry.thingDef;
+                        material.count = entry.count;
+                        wanted.Add(material);
+                    }
+                }
+                return wanted;
+            }
 
             Need need = new Need();
             need.accepts = consumer.Accepts;
