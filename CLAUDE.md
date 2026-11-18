@@ -102,6 +102,7 @@ No Harmony patches. Keep it that way if at all possible.
 ## Standing preferences
 
 - Licence is CC0 for every SloppyMods mod.
-- Replies to the owner: concise summaries; attach a build zip when they will
-  test in game.
+- Replies to the owner: concise summaries. Don't attach build zips: the owner
+  installs from GitHub (RimSort), so a pushed build with its release is enough.
+  Make a zip only when explicitly asked (e.g. for the Steam Workshop).
 - For art changes, show the owner before/after comparisons.
