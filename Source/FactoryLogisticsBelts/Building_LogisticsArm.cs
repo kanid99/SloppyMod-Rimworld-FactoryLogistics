@@ -341,6 +341,12 @@ namespace FactoryLogistics.Belts
             }
         }
 
+        // The belt at the gripper: what a Feeder takes from as it passes (or ends here).
+        public Building_Conveyor SourceConveyor
+        {
+            get { return Spawned ? LogisticsManager.ConveyorAt(SourceCell, Map) : null; }
+        }
+
         // The conveyor a Loader puts onto, or a Feeder's machine input conveyor.
         public Building_Conveyor OutputConveyor
         {

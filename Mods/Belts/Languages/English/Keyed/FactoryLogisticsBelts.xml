@@ -5,7 +5,7 @@
   <FactoryLogistics.Mode_Feeder>Feeder</FactoryLogistics.Mode_Feeder>
   <FactoryLogistics.ModeDesc>Switch this arm's job. Its gripper reaches into the cell it takes from; it puts down on the cell behind it.\n\nLoader: takes from the storage at its gripper and puts onto the conveyor behind it, sending only what the network's machine still needs.\n\nFeeder: gripper towards the end of a belt; puts what arrives into the machine input behind it (factory hopper or conveyor, the repair centre's item spot, or storage). Anything no longer wanted is set down beside it.</FactoryLogistics.ModeDesc>
   <FactoryLogistics.LoaderNoBelt>No conveyor behind it to put onto. (The gripper faces the storage it takes from.)</FactoryLogistics.LoaderNoBelt>
-  <FactoryLogistics.LoaderNoFeeder>Its belt does not lead to a Feeder.</FactoryLogistics.LoaderNoFeeder>
+  <FactoryLogistics.LoaderNoFeeder>Its belt does not lead to a Feeder (one at the end of the belt, or with its gripper on the belt as it passes).</FactoryLogistics.LoaderNoFeeder>
   <FactoryLogistics.NoMachine>Nothing to feed behind the Feeder: no factory machine input, repair centre item spot or storage there. (The gripper faces the belt.)</FactoryLogistics.NoMachine>
   <FactoryLogistics.NeedAccepted>items the {0} will take</FactoryLogistics.NeedAccepted>
   <FactoryLogistics.LoaderBeltBusy>Waiting for room on the belt.</FactoryLogistics.LoaderBeltBusy>
@@ -54,4 +54,5 @@
   <FactoryLogistics.RefusedByStorage>not allowed by the storage's settings</FactoryLogistics.RefusedByStorage>
   <FactoryLogistics.ForbiddenItem>forbidden</FactoryLogistics.ForbiddenItem>
   <FactoryLogistics.ArmHolding>Holding {0} until there is room to set it down.</FactoryLogistics.ArmHolding>
+  <FactoryLogistics.ServingMany>Loading for {0} machines along this belt.</FactoryLogistics.ServingMany>
 </LanguageData>

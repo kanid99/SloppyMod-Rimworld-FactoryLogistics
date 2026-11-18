@@ -1,0 +1,9 @@
+[h2]Build 0.9.16[/h2]
+[h3]Fixed[/h3]
+[list]
+[*]A Feeder with its gripper on a belt that runs past it (rather than ending on it) was not seen as connected, so Loaders on that belt said "Its belt does not lead to a Feeder" and sent nothing. Feeders now pick what their machine wants off a passing belt, and anything else rides on.
+[/list]
+[h3]Changed[/h3]
+[list]
+[*]Several Feeders can now share one belt, such as a main line running past a row of machines. Loaders on it send what all of those machines still need, highest Feeder priority first. (Before, every Feeder after the first on a shared belt was paused.)
+[/list]
