@@ -103,9 +103,6 @@ namespace FactoryLogistics
             return Ext.launchAirCost * TubeUtility.LaunchCostFactor(mass);
         }
 
-        // Moving between levels of "As above, So below" counts as this many cells per level.
-        private const float CellsPerLevel = 8f;
-
         public TubeCapsule WaitingCapsule()
         {
             return Spawned ? FirstHeldCapsule(false) : null;
@@ -119,22 +116,10 @@ namespace FactoryLogistics
 
             Building_TubeReceiver target = Destination;
 
-            // The burst: a lump of air out of the network's tanks. The compressor then runs at
-            // full power until they are full again, which is where the electricity goes.
-            float drawn;
-            Net.DrawAmongStorage(LaunchCost(capsule), out drawn, null, false);
-
-            float distance = LevelUtility.TravelDistance(Position, target.Position, Map, CellsPerLevel);
-            int travel = Mathf.Clamp(Mathf.RoundToInt(distance * Ext.transitTicksPerCell),
-                Ext.minTransitTicks, Ext.maxTransitTicks);
-
-            Vector3 puffAt = DrawPos;
+            float cost = LaunchCost(capsule);
             capsule.DeSpawn();
             TubeCapsule delivered = capsule.ConvertTo(TubeDefOf.FL_CapsuleDelivered, null);
-            delivered.arriveTick = Find.TickManager.TicksGame + travel;
-            target.TakeInTransit(delivered);
-
-            FleckMaker.ThrowAirPuffUp(puffAt, Map);
+            TubeUtility.Fire(this, delivered, target, cost);
         }
 
         public override IEnumerable<Gizmo> GetGizmos()

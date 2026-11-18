@@ -30,6 +30,9 @@ VEF_COMMIT=6aa5dd0dc844de4da7301291ca7cb57560f9859b
 # Vanilla Furniture Expanded - Factory's assembly, for the belts module (Mods/Belts), which
 # only loads when that mod is active.
 VFEF_COMMIT=934cde766fa93bd37c5ffbb963990967ebed4ea5
+# Vehicle Framework's assemblies, for the vehicle dock module (Mods/Vehicles), which only
+# loads when that mod is active.
+VF_COMMIT=a9643213349d91d42e359f0380d7eae64f709f28
 
 build() {
   local pipe vfef core
@@ -38,6 +41,10 @@ build() {
   core=Assemblies/FactoryLogistics.dll
   compile "$core" Source/FactoryLogistics "$pipe"
   compile Mods/Belts/Assemblies/FactoryLogisticsBelts.dll Source/FactoryLogisticsBelts "$pipe" "$vfef" "$core"
+  local vf="https://raw.githubusercontent.com/SmashPhil/Vehicle-Framework/$VF_COMMIT/1.6/Assemblies"
+  compile Mods/Vehicles/Assemblies/FactoryLogisticsVehicles.dll Source/FactoryLogisticsVehicles "$pipe" "$core" \
+    "$(download "$vf/Vehicles.dll" "Vehicles-$VF_COMMIT.dll")" \
+    "$(download "$vf/SmashTools.dll" "SmashTools-$VF_COMMIT.dll")"
 }
 # -------------------------------------------------------------------------
 

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <FactoryLogistics.DockMode_Load>Loading vehicles</FactoryLogistics.DockMode_Load>
+  <FactoryLogistics.DockMode_Unload>Unloading vehicles</FactoryLogistics.DockMode_Unload>
+  <FactoryLogistics.DockModeDesc>Switch between loading and unloading.\n\nLoading: capsules sent here go straight into the parked vehicle's cargo, as long as it has the weight to spare.\n\nUnloading: the parked vehicle's cargo is sent, a capsule at a time, to the receiver this dock is pointed at. Needs empty capsule shells on the pad.</FactoryLogistics.DockModeDesc>
+  <FactoryLogistics.DockSetDestinationDesc>Choose the tube receiver that unloaded cargo is sent to.</FactoryLogistics.DockSetDestinationDesc>
+  <FactoryLogistics.DockFilter>Cargo to unload</FactoryLogistics.DockFilter>
+  <FactoryLogistics.DockFilterDesc>Choose which cargo this dock takes off vehicles. Anything not allowed stays aboard.</FactoryLogistics.DockFilterDesc>
+  <FactoryLogistics.DockFilterHint>Cargo allowed here is unloaded; everything else stays in the vehicle. Passengers are never unloaded.</FactoryLogistics.DockFilterHint>
+  <FactoryLogistics.DockEmpty>No vehicle parked.</FactoryLogistics.DockEmpty>
+  <FactoryLogistics.DockParked>Parked: {0} ({1} of {2} kg cargo free)</FactoryLogistics.DockParked>
+  <FactoryLogistics.DockRoom>Room for {0} more capsule(s); {1} kg on its way</FactoryLogistics.DockRoom>
+  <FactoryLogistics.DockReady>Ready to load {0}: {1} kg free.</FactoryLogistics.DockReady>
+  <FactoryLogistics.DockLoaded>Loaded a capsule into {0}.</FactoryLogistics.DockLoaded>
+  <FactoryLogistics.DockVehicleFull>{0} has no room for the waiting capsule.</FactoryLogistics.DockVehicleFull>
+  <FactoryLogistics.DockVehiclePacking>{0} is being packed for a caravan; leaving its cargo alone.</FactoryLogistics.DockVehiclePacking>
+  <FactoryLogistics.DockNothingToUnload>Nothing aboard {0} to unload.</FactoryLogistics.DockNothingToUnload>
+  <FactoryLogistics.DockNeedsShells>Needs empty capsule shells on the pad.</FactoryLogistics.DockNeedsShells>
+  <FactoryLogistics.DockSent>Sent {0} to {1}.</FactoryLogistics.DockSent>
+  <FactoryLogistics.DockShells>Empty shells on the pad: {0}</FactoryLogistics.DockShells>
+</LanguageData>

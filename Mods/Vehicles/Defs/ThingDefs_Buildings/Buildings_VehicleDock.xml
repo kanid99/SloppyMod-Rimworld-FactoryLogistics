@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!--
+    The vehicle dock module. Loaded only when Vehicle Framework is active (LoadFolders.xml).
+
+    A 3x3 floor pad on the tube network: a receiver (so senders can be pointed at it) that is
+    not an edifice and costs nothing to cross, so vehicles drive and park over it. Its cells hold
+    delivered capsules that arrive with nothing parked, and empty shells while unloading.
+  -->
+  <ThingDef ParentName="FL_ReceiverBase">
+    <defName>FL_VehicleDock</defName>
+    <label>vehicle tube dock</label>
+    <description>A pad on the pneumatic tube network for loading and unloading vehicles. Park a vehicle over it; a button switches what it does.\n\nLoad: it acts as a tube receiver whose room is the parked vehicle's free cargo weight. Point tube senders at it, and what they send goes straight into the vehicle's cargo; the empty capsule shells are left beside the pad. With nothing parked, senders wait, and anything already on its way waits on the pad for the next vehicle.\n\nUnload: it sends the parked vehicle's cargo, one capsule at a time, to the tube receiver it is pointed at. Each capsule needs an empty shell, which haulers bring to the pad. A filter chooses what to unload, and passengers are never touched.\n\nIt only works on your own vehicles once they have stopped, and leaves a vehicle alone while it is being packed for a caravan.</description>
+    <thingClass>FactoryLogistics.VehicleDock.Building_VehicleDock</thingClass>
+    <graphicData>
+      <texPath>Things/Building/FactoryLogistics/VehicleDock</texPath>
+      <graphicClass>Graphic_Single</graphicClass>
+      <drawSize>(3,3)</drawSize>
+    </graphicData>
+    <size>(3,3)</size>
+    <rotatable>false</rotatable>
+    <altitudeLayer>FloorEmplacement</altitudeLayer>
+    <passability>Standable</passability>
+    <pathCost>0</pathCost>
+    <fillPercent>0</fillPercent>
+    <castEdgeShadows>false</castEdgeShadows>
+    <staticSunShadowHeight>0</staticSunShadowHeight>
+    <canOverlapZones>false</canOverlapZones>
+    <minifiedDef />
+    <statBases>
+      <MaxHitPoints>250</MaxHitPoints>
+      <WorkToBuild>3000</WorkToBuild>
+      <Flammability>0.2</Flammability>
+    </statBases>
+    <costList>
+      <Steel>120</Steel>
+      <ComponentIndustrial>2</ComponentIndustrial>
+    </costList>
+    <building>
+      <isEdifice>false</isEdifice>
+      <preventDeteriorationOnTop>true</preventDeteriorationOnTop>
+      <ignoreStoredThingsBeauty>true</ignoreStoredThingsBeauty>
+      <maxItemsInCell>1</maxItemsInCell>
+      <groupingLabel>tube receivers</groupingLabel>
+      <groupingOrder>32</groupingOrder>
+      <fixedStorageSettings>
+        <filter>
+          <thingDefs>
+            <li>FL_CapsuleDelivered</li>
+            <li>FL_CapsuleShell</li>
+          </thingDefs>
+        </filter>
+      </fixedStorageSettings>
+      <defaultStorageSettings>
+        <priority>Important</priority>
+        <filter>
+          <thingDefs>
+            <li>FL_CapsuleDelivered</li>
+            <li>FL_CapsuleShell</li>
+          </thingDefs>
+        </filter>
+      </defaultStorageSettings>
+    </building>
+  </ThingDef>
+
+</Defs>

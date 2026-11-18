@@ -9,6 +9,7 @@ It is one mod in modules:
 | Module | Needs | What it adds | State |
 | --- | --- | --- | --- |
 | Core: pneumatic tubes | Vanilla Expanded Framework | Point-to-point capsule delivery across the base (below) | Built, not yet load-tested |
+| Vehicle dock | Vehicle Framework | A pad that loads parked vehicles from the tubes and unloads them into the tubes | Built (`Mods/Vehicles`), not yet load-tested |
 | Belts | Vanilla Furniture Expanded - Factory | Conveyor arms that load belts from storage and feed machines on demand | Built (`Mods/Belts`), not yet load-tested |
 
 ## Roadmap

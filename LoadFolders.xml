@@ -5,9 +5,11 @@
   <v1.6>
     <li>/</li>
     <li IfModActive="VanillaExpanded.VFEFactory">Mods/Belts</li>
+    <li IfModActive="SmashPhil.VehicleFramework">Mods/Vehicles</li>
   </v1.6>
   <v1.7>
     <li>/</li>
     <li IfModActive="VanillaExpanded.VFEFactory">Mods/Belts</li>
+    <li IfModActive="SmashPhil.VehicleFramework">Mods/Vehicles</li>
   </v1.7>
 </loadFolders>

@@ -47,6 +47,44 @@ namespace FactoryLogistics
             float factor = ext.emptyFactor + (ext.fullFactor - ext.emptyFactor) * (mass / ext.massLimit);
             return Mathf.Clamp(factor, ext.emptyFactor, ext.maxFactor);
         }
+        // Moving between levels of "As above, So below" counts as this many cells per level.
+        public const float CellsPerLevel = 8f;
+
+        /// <summary>
+        /// Fires a delivered (not spawned) capsule from a station to a receiver: the burst of air
+        /// out of the network's tanks - the compressor then runs at full power until they are
+        /// full again, which is where the electricity goes - and the flight, timed by distance.
+        /// The caller has already checked the route, the room and the air.
+        /// </summary>
+        public static void Fire(Building_TubeStation from, TubeCapsule delivered, Building_TubeReceiver target, float airCost)
+        {
+            float drawn;
+            from.Net.DrawAmongStorage(airCost, out drawn, null, false);
+
+            TubeStationExtension ext = from.Ext;
+            float distance = LevelUtility.TravelDistance(from.Position, target.Position, from.Map, CellsPerLevel);
+            int travel = Mathf.Clamp(Mathf.RoundToInt(distance * ext.transitTicksPerCell),
+                ext.minTransitTicks, ext.maxTransitTicks);
+
+            delivered.arriveTick = Find.TickManager.TicksGame + travel;
+            target.TakeInTransit(delivered);
+            FleckMaker.ThrowAirPuffUp(from.DrawPos, from.Map);
+        }
+
+        /// <summary>
+        /// How many of a thing make one full capsule: a full stack, or what fits under the weight
+        /// limit if that is less, and never fewer than one.
+        /// </summary>
+        public static int CapsuleLoadOf(Thing thing)
+        {
+            int count = Mathf.Max(1, thing.def.stackLimit);
+            float limit = CapsuleMassLimit;
+            float unit = thing.GetStatValue(StatDefOf.Mass);
+            if (limit > 0f && unit > 0f)
+                count = Mathf.Min(count, Mathf.FloorToInt(limit / unit));
+            return Mathf.Max(1, count);
+        }
+
         public static IEnumerable<Building_TubeSender> Senders(Map map)
         {
             if (map == null)
