@@ -5,7 +5,7 @@
     ============================================================ air supply
 
     The compressor makes 10 L each network tick and every station leaks 1, so one compressor
-    carries a handful of stations and still refills the tanks. A launch takes 30 L out of the
+    carries a handful of stations and still refills the tanks. A launch takes 30 L (scaled by the capsule's weight: half empty, 1.5x full) out of the
     tanks in one go (TubeStationExtension on the sender), which is three network ticks - five
     seconds - of one compressor's output.
 

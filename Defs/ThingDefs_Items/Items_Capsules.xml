@@ -60,6 +60,15 @@
       <texPath>Things/Item/FactoryLogistics/Capsule</texPath>
       <graphicClass>Graphic_Single</graphicClass>
     </graphicData>
+    <modExtensions>
+      <!-- How much one capsule carries, and how its weight sets the air a launch costs. -->
+      <li Class="FactoryLogistics.CapsuleExtension">
+        <massLimit>40</massLimit>
+        <emptyFactor>0.5</emptyFactor>
+        <fullFactor>1.5</fullFactor>
+        <maxFactor>2.5</maxFactor>
+      </li>
+    </modExtensions>
   </ThingDef>
 
   <ThingDef ParentName="FL_CapsuleBase">

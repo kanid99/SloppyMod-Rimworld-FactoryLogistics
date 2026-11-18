@@ -96,6 +96,21 @@ namespace FactoryLogistics
             innerContainer.DoTick();
         }
 
+        /// <summary>The weight of what is inside, in kg. The shell itself is not counted.</summary>
+        public float ContentsMass
+        {
+            get
+            {
+                float mass = 0f;
+                for (int i = 0; i < innerContainer.Count; i++)
+                {
+                    Thing thing = innerContainer[i];
+                    mass += thing.GetStatValue(StatDefOf.Mass) * thing.stackCount;
+                }
+                return mass;
+            }
+        }
+
         /// <summary>How many units inside pass the filter. Used by the pack bill's counter.</summary>
         public int CountMatching(ThingFilter filter)
         {
@@ -142,6 +157,7 @@ namespace FactoryLogistics
             if (!text.NullOrEmpty())
                 text += "\n";
             text += "FactoryLogistics.CapsuleContents".Translate(ContentsLabel);
+            text += "\n" + "FactoryLogistics.CapsuleMass".Translate(ContentsMass.ToString("0.#"), TubeUtility.CapsuleMassLimit.ToString("0.#"));
             if (!Delivered)
             {
                 Building_TubeSender sender = AssignedSender;

@@ -22,7 +22,7 @@ namespace FactoryLogistics
             transit = new ThingOwner<Thing>(this, false, LookMode.Deep);
         }
 
-        public int Capacity
+        public virtual int Capacity
         {
             get { return AllSlotCellsList().Count * Mathf.Max(1, def.building.maxItemsInCell); }
         }
@@ -33,9 +33,24 @@ namespace FactoryLogistics
         }
 
         /// <summary>Room for more capsules, counting the ones already on their way.</summary>
-        public int FreeSlots
+        public virtual int FreeSlots
         {
             get { return Spawned ? Capacity - HeldItemCount() - transit.Count : 0; }
+        }
+
+        /// <summary>
+        /// Whether a sender may fire this capsule here now (null: any capsule). A receiver whose
+        /// room depends on what is sent - a vehicle dock counting weight - overrides it.
+        /// </summary>
+        public virtual bool HasRoomFor(TubeCapsule capsule)
+        {
+            return FreeSlots > 0;
+        }
+
+        /// <summary>The capsules on their way here.</summary>
+        protected ThingOwner<Thing> Transit
+        {
+            get { return transit; }
         }
 
         // Only what is already inside counts as correctly stored here. Haulers never carry a
@@ -102,7 +117,8 @@ namespace FactoryLogistics
             }
         }
 
-        private void SetDown(Thing thing)
+        /// <summary>A capsule has arrived: put it in the station's cells.</summary>
+        protected virtual void SetDown(Thing thing)
         {
             Thing placed;
             int perCell = Mathf.Max(1, def.building.maxItemsInCell);

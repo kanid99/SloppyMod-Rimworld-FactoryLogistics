@@ -82,15 +82,29 @@ namespace FactoryLogistics
                 return "FactoryLogistics.BlockDestinationNoAir";
             if (!forLaunch)
                 return null;
-            if (target.FreeSlots <= 0)
+            TubeCapsule waiting = WaitingCapsule();
+            if (!target.HasRoomFor(waiting))
                 return "FactoryLogistics.BlockDestinationFull";
             // Tanks only. The network also keeps a small overflow buffer of its own, but air
             // taken from there would never leave the tanks short, and tanks that are not short
             // are what lets the compressor idle - the burst would cost nothing.
-            if (net.CurrentStored() < Ext.launchAirCost)
+            if (net.CurrentStored() < LaunchCost(waiting))
                 return "FactoryLogistics.BlockLowPressure";
             return null;
         }
+
+        /// <summary>
+        /// Air to launch this capsule: the station's base cost, scaled by how heavy it is - half
+        /// for an empty capsule, one and a half at the weight limit.
+        /// </summary>
+        public float LaunchCost(TubeCapsule capsule)
+        {
+            float mass = capsule != null ? capsule.ContentsMass : TubeUtility.CapsuleMassLimit;
+            return Ext.launchAirCost * TubeUtility.LaunchCostFactor(mass);
+        }
+
+        // Moving between levels of "As above, So below" counts as this many cells per level.
+        private const float CellsPerLevel = 8f;
 
         public TubeCapsule WaitingCapsule()
         {
@@ -108,9 +122,9 @@ namespace FactoryLogistics
             // The burst: a lump of air out of the network's tanks. The compressor then runs at
             // full power until they are full again, which is where the electricity goes.
             float drawn;
-            Net.DrawAmongStorage(Ext.launchAirCost, out drawn, null, false);
+            Net.DrawAmongStorage(LaunchCost(capsule), out drawn, null, false);
 
-            float distance = Position.DistanceTo(target.Position);
+            float distance = LevelUtility.TravelDistance(Position, target.Position, Map, CellsPerLevel);
             int travel = Mathf.Clamp(Mathf.RoundToInt(distance * Ext.transitTicksPerCell),
                 Ext.minTransitTicks, Ext.maxTransitTicks);
 
@@ -176,7 +190,13 @@ namespace FactoryLogistics
                 text += "\n" + (blocked != null
                     ? "FactoryLogistics.SenderBlocked".Translate(blocked.Translate())
                     : (waiting ? "FactoryLogistics.SenderLaunching".Translate() : "FactoryLogistics.SenderReady".Translate()));
-                text += "\n" + "FactoryLogistics.LaunchCost".Translate(Ext.launchAirCost.ToString("F0"));
+                TubeCapsule next = WaitingCapsule();
+                if (next != null)
+                    text += "\n" + "FactoryLogistics.LaunchCostCapsule".Translate(LaunchCost(next).ToString("F0"), next.ContentsMass.ToString("0.#"));
+                else
+                    text += "\n" + "FactoryLogistics.LaunchCostRange".Translate(
+                        (Ext.launchAirCost * TubeUtility.Capsule.emptyFactor).ToString("F0"),
+                        (Ext.launchAirCost * TubeUtility.Capsule.fullFactor).ToString("F0"));
             }
             return text;
         }

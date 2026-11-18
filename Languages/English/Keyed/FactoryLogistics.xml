@@ -32,6 +32,9 @@
   <FactoryLogistics.SenderLaunching>Sending.</FactoryLogistics.SenderLaunching>
   <FactoryLogistics.SenderBlocked>Cannot send: {0}</FactoryLogistics.SenderBlocked>
   <FactoryLogistics.LaunchCost>Air per capsule: {0} L</FactoryLogistics.LaunchCost>
+  <FactoryLogistics.LaunchCostCapsule>Air for the waiting capsule: {0} L ({1} kg)</FactoryLogistics.LaunchCostCapsule>
+  <FactoryLogistics.LaunchCostRange>Air per capsule: {0} L empty to {1} L full</FactoryLogistics.LaunchCostRange>
+  <FactoryLogistics.CapsuleMass>Weight: {0} of {1} kg</FactoryLogistics.CapsuleMass>
 
   <FactoryLogistics.BlockNoDestination>no destination chosen</FactoryLogistics.BlockNoDestination>
   <FactoryLogistics.BlockNoAir>no air pressure</FactoryLogistics.BlockNoAir>
@@ -46,7 +49,7 @@
 
   <!-- Bills -->
   <FactoryLogistics.BillNeedsShell>1 capsule shell</FactoryLogistics.BillNeedsShell>
-  <FactoryLogistics.BillNeedsCargo>{0}% of a full stack of the goods being packed</FactoryLogistics.BillNeedsCargo>
+  <FactoryLogistics.BillNeedsCargo>{0}% of a full capsule of the goods being packed (a full stack, or up to {1} kg)</FactoryLogistics.BillNeedsCargo>
   <FactoryLogistics.CountDescription>the goods this bill packs, at its tube sender's destination or on their way there</FactoryLogistics.CountDescription>
 
   <!-- Alert -->

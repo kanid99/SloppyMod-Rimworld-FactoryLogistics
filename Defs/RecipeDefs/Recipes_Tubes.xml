@@ -47,8 +47,9 @@
                                    to take its product to.
 
       ingredientValueGetterClass   IngredientValueGetter_StackFraction counts cargo in stacks, so
-                                   the second ingredient's count is "this much of a full stack of
-                                   whatever it is". The counts stop just short of the round number
+                                   the second ingredient's count is "this much of a full capsule of
+                                   whatever it is" - a full stack, or less when the capsule weight
+                                   limit (CapsuleExtension, 40 kg) is reached first. The counts stop just short of the round number
                                    because vanilla rounds the division UP, and 1 / (1/75) lands a
                                    hair above 75 in floating point.
 
@@ -94,7 +95,7 @@
 
   <RecipeDef ParentName="FL_PackBase">
     <defName>FL_PackFull</defName>
-    <label>pack a capsule (full stack)</label>
+    <label>pack a capsule (full)</label>
     <displayPriority>300</displayPriority>
     <ingredients>
       <li>
@@ -123,7 +124,7 @@
 
   <RecipeDef ParentName="FL_PackBase">
     <defName>FL_PackHalf</defName>
-    <label>pack a capsule (half stack)</label>
+    <label>pack a capsule (half full)</label>
     <displayPriority>290</displayPriority>
     <ingredients>
       <li>
@@ -152,7 +153,7 @@
 
   <RecipeDef ParentName="FL_PackBase">
     <defName>FL_PackSmall</defName>
-    <label>pack a capsule (tenth of a stack)</label>
+    <label>pack a capsule (tenth full)</label>
     <displayPriority>280</displayPriority>
     <ingredients>
       <li>

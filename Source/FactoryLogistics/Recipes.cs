@@ -113,8 +113,11 @@ namespace FactoryLogistics
     }
 
     /// <summary>
-    /// Measures the cargo as a fraction of a full stack, so one recipe can say "a full stack of
-    /// whatever this is": 75 steel, 10 meals, one rifle. The shell is counted in whole shells.
+    /// Measures the cargo as a fraction of a full capsule, so one recipe can say "a full capsule
+    /// of whatever this is": a full stack, or as much as the capsule's weight limit allows if
+    /// that is less - 75 steel (37.5 kg), 10 meals, one rifle, but only 40 uranium. Anything
+    /// heavier than the limit on its own still goes, one per capsule. The shell is counted in
+    /// whole shells.
     /// </summary>
     public class IngredientValueGetter_StackFraction : IngredientValueGetter
     {
@@ -122,14 +125,20 @@ namespace FactoryLogistics
         {
             if (t == TubeDefOf.FL_CapsuleShell)
                 return 1f;
-            return 1f / Mathf.Max(1, t.stackLimit);
+            float byStack = 1f / Mathf.Max(1, t.stackLimit);
+            float limit = TubeUtility.CapsuleMassLimit;
+            if (limit <= 0f)
+                return byStack;
+            float byMass = t.GetStatValueAbstract(StatDefOf.Mass, GenStuff.DefaultStuffFor(t)) / limit;
+            return Mathf.Max(byStack, byMass);
         }
 
         public override string BillRequirementsDescription(RecipeDef r, IngredientCount ing)
         {
             if (ing.IsFixedIngredient)
                 return "FactoryLogistics.BillNeedsShell".Translate();
-            return "FactoryLogistics.BillNeedsCargo".Translate(Mathf.Round(ing.GetBaseCount() * 100f).ToString("F0"));
+            return "FactoryLogistics.BillNeedsCargo".Translate(Mathf.Round(ing.GetBaseCount() * 100f).ToString("F0"),
+                TubeUtility.CapsuleMassLimit.ToString("0.#"));
         }
     }
 
