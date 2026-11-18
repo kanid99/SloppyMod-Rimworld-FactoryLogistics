@@ -9,20 +9,26 @@ It is one mod in modules:
 | Module | Needs | What it adds | State |
 | --- | --- | --- | --- |
 | Core: pneumatic tubes | Vanilla Expanded Framework | Point-to-point capsule delivery across the base (below) | Built, not yet load-tested |
-| Belts | Vanilla Furniture Expanded - Factory | Conveyor arms that load belts from storage and feed machines on demand | Designed (see "Roadmap") |
+| Belts | Vanilla Furniture Expanded - Factory | Conveyor arms that load belts from storage and feed machines on demand | Built (`Mods/Belts`), not yet load-tested |
 
 ## Roadmap
 
-1. Merge the pneumatic tubes in as the core (this build).
-2. **Belts module.** One rotatable *conveyor arm* building with two modes:
+1. Merge the pneumatic tubes in as the core (0.9.4).
+2. **Belts module** (0.9.5). One rotatable *conveyor arm* building with two modes:
    - *Loader*: takes from the storage behind it and puts onto the belt in front -
      only what the network's machine has asked for.
    - *Feeder*: sits at the end of a belt and puts what arrives into the VFE
      machine's input slot in front of it (or the hopper on it). One per network.
      It reads the machine's current process for what it still needs; anything
      that arrives with no taker is dropped beside it, so a belt never jams.
-   VFE's conveyors pick up items left on their cell and drop items onto a
-   walkable, non-edifice cell at their end, so the arm needs no patch to VFE.
+   A Loader hands its item to the conveyor in front through VFE's public
+   `Building_Conveyor.TryAdd`; a VFE belt drops items onto a walkable,
+   non-edifice cell at its end, which is where a Feeder stands. So the arm
+   needs no patch to VFE. Networks follow merges and underground conveyors
+   (exit to linked entrance) and are rebuilt every two seconds, as VFE gives no
+   notice when a belt is built or removed. Source: `Source/FactoryLogisticsBelts`,
+   assembly `Mods/Belts/Assemblies/FactoryLogisticsBelts.dll`, art
+   `Source/Art/belts_art.py`.
 3. **Shared request layer:** feeders post their machine's needs; belts and tubes
    both fill them.
 4. **Bridges:** an auto-unpacking tube receiver that loaders can draw from, and

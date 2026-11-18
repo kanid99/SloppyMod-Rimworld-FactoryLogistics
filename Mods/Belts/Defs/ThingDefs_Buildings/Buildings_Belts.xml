@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!--
+    The belts module. Loaded only when Vanilla Furniture Expanded - Factory is active
+    (LoadFolders.xml), so these defs may name its classes, research and build tab freely.
+
+    The arm is not an edifice: it sits on the floor beside a belt, like a conduit, so a VFE belt
+    that points at it drops its item onto it, and pawns walk over it.
+  -->
+  <ThingDef ParentName="BuildingBase">
+    <defName>FL_ConveyorArm</defName>
+    <label>conveyor arm</label>
+    <description>A powered arm that works a Vanilla Furniture Expanded - Factory belt line. It always works from the cell behind it to the cell in front of it, so its facing is its direction. A button switches it between two jobs:\n\nLoader: stands with a stockpile, shelf or other storage behind it and a conveyor in front, and puts goods onto the belt.\n\nFeeder: stands at the end of a belt, in front of a factory machine's input hopper (or input conveyor). It takes what the belt brings and puts it into the machine.\n\nTogether they form a network: the Feeder reads what the machine's current process still needs, and every Loader on the belts leading to it sends only that - no more than is missing, counting what is already on its way. Anything that reaches the Feeder and is no longer wanted is set down on the floor beside it, so the line never jams.</description>
+    <thingClass>FactoryLogistics.Belts.Building_LogisticsArm</thingClass>
+    <graphicData>
+      <texPath>Things/Building/FactoryLogistics/ArmLoader</texPath>
+      <graphicClass>Graphic_Multi</graphicClass>
+      <drawSize>(1,1)</drawSize>
+    </graphicData>
+    <uiIconPath>UI/Commands/FactoryLogistics/ArmLoader</uiIconPath>
+    <altitudeLayer>FloorEmplacement</altitudeLayer>
+    <passability>Standable</passability>
+    <size>(1,1)</size>
+    <rotatable>true</rotatable>
+    <tickerType>Normal</tickerType>
+    <canOverlapZones>true</canOverlapZones>
+    <clearBuildingArea>false</clearBuildingArea>
+    <statBases>
+      <MaxHitPoints>100</MaxHitPoints>
+      <WorkToBuild>1200</WorkToBuild>
+      <Mass>12</Mass>
+      <Flammability>0.5</Flammability>
+    </statBases>
+    <costList>
+      <Steel>40</Steel>
+      <ComponentIndustrial>1</ComponentIndustrial>
+    </costList>
+    <building>
+      <isEdifice>false</isEdifice>
+      <relatedBuildCommands>
+        <li>VFEFactory_Conveyor</li>
+        <li>VFEFactory_FactoryHopper</li>
+      </relatedBuildCommands>
+    </building>
+    <comps>
+      <li Class="CompProperties_Power">
+        <compClass>CompPowerTrader</compClass>
+        <basePowerConsumption>60</basePowerConsumption>
+      </li>
+      <li Class="CompProperties_Flickable" />
+    </comps>
+    <designationCategory>VFEFactory_Factories</designationCategory>
+    <researchPrerequisites>
+      <li>VFE_BasicFactories</li>
+    </researchPrerequisites>
+    <constructEffect>ConstructMetal</constructEffect>
+  </ThingDef>
+
+</Defs>

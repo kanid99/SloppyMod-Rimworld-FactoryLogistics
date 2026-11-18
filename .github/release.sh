@@ -27,10 +27,17 @@ FOLDER=SloppyModsFactoryLogistics
 # Vanilla Expanded Framework's PipeSystem.dll, which the tubes are built on, taken
 # from the framework's own repository at a fixed commit.
 VEF_COMMIT=6aa5dd0dc844de4da7301291ca7cb57560f9859b
+# Vanilla Furniture Expanded - Factory's assembly, for the belts module (Mods/Belts), which
+# only loads when that mod is active.
+VFEF_COMMIT=934cde766fa93bd37c5ffbb963990967ebed4ea5
 
 build() {
-  compile Assemblies/FactoryLogistics.dll Source/FactoryLogistics \
-    "$(download "https://raw.githubusercontent.com/Vanilla-Expanded/VanillaExpandedFramework/$VEF_COMMIT/1.6/Assemblies/PipeSystem.dll" "PipeSystem-$VEF_COMMIT.dll")"
+  local pipe vfef core
+  pipe="$(download "https://raw.githubusercontent.com/Vanilla-Expanded/VanillaExpandedFramework/$VEF_COMMIT/1.6/Assemblies/PipeSystem.dll" "PipeSystem-$VEF_COMMIT.dll")"
+  vfef="$(download "https://raw.githubusercontent.com/Vanilla-Expanded/VanillaFurnitureExpanded-Factory/$VFEF_COMMIT/1.6/Assemblies/VanillaFurnitureExpandedFactory.dll" "VFEFactory-$VFEF_COMMIT.dll")"
+  core=Assemblies/FactoryLogistics.dll
+  compile "$core" Source/FactoryLogistics "$pipe"
+  compile Mods/Belts/Assemblies/FactoryLogisticsBelts.dll Source/FactoryLogisticsBelts "$pipe" "$vfef" "$core"
 }
 # -------------------------------------------------------------------------
 

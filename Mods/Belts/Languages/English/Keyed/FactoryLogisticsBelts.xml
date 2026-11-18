@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <FactoryLogistics.ArmNoPower>No power.</FactoryLogistics.ArmNoPower>
+  <FactoryLogistics.Mode_Loader>Loader</FactoryLogistics.Mode_Loader>
+  <FactoryLogistics.Mode_Feeder>Feeder</FactoryLogistics.Mode_Feeder>
+  <FactoryLogistics.ModeDesc>Switch this arm's job.\n\nLoader: takes from the storage behind it and puts onto the conveyor in front of it, sending only what the network's machine still needs.\n\nFeeder: stands at the end of a belt and puts what arrives into the machine input (factory hopper or conveyor) in front of it. Anything no longer wanted is set down beside it.</FactoryLogistics.ModeDesc>
+  <FactoryLogistics.LoaderNoBelt>No conveyor in front of it.</FactoryLogistics.LoaderNoBelt>
+  <FactoryLogistics.LoaderNoFeeder>Its belt does not lead to a Feeder.</FactoryLogistics.LoaderNoFeeder>
+  <FactoryLogistics.NoMachine>No factory machine takes input from the cell in front of the Feeder.</FactoryLogistics.NoMachine>
+  <FactoryLogistics.LoaderBeltBusy>Waiting for room on the belt.</FactoryLogistics.LoaderBeltBusy>
+  <FactoryLogistics.MachineSatisfied>The machine needs nothing right now.</FactoryLogistics.MachineSatisfied>
+  <FactoryLogistics.MachineCovered>Everything the machine needs is already on its way.</FactoryLogistics.MachineCovered>
+  <FactoryLogistics.LoaderSent>Sent {0} to the {1}.</FactoryLogistics.LoaderSent>
+  <FactoryLogistics.LoaderNoStock>Nothing in its storage the machine wants ({0}).</FactoryLogistics.LoaderNoStock>
+  <FactoryLogistics.FeederPaused>Paused: its belts already lead to {0}.</FactoryLogistics.FeederPaused>
+  <FactoryLogistics.FeederDelivered>Put {0} in.</FactoryLogistics.FeederDelivered>
+  <FactoryLogistics.FeederSlotFull>The machine's input is full; holding the belt.</FactoryLogistics.FeederSlotFull>
+  <FactoryLogistics.FeederDropped>Set down {0}: nothing wants it any more.</FactoryLogistics.FeederDropped>
+  <FactoryLogistics.Feeding>Feeding the {0} from {1} loader(s).</FactoryLogistics.Feeding>
+  <FactoryLogistics.Serving>Loading for the {0}.</FactoryLogistics.Serving>
+  <FactoryLogistics.CallingFor>Calling for: {0}</FactoryLogistics.CallingFor>
+</LanguageData>

@@ -33,7 +33,9 @@ commit pushed to `main` is what the game loads next**.
   Use only the sections that apply (Added, Changed, Fixed, Removed).
 - **Commit the compiled assembly.** RimWorld loads the DLL, not the source,
   and a clone gets only what is in git. This mod needs
-  `Assemblies/FactoryLogistics.dll`; `.gitignore` un-ignores exactly that file.
+  `Assemblies/FactoryLogistics.dll` (core; `.gitignore` un-ignores exactly that
+  file) and one assembly per module, e.g. `Mods/Belts/Assemblies/FactoryLogisticsBelts.dll`
+  (built by `build()` in `.github/release.sh` against VFE Factory's DLL at a pinned commit).
   Rebuild and commit it in the same commit as any C# change; a stale DLL is
   what players get.
 - **Stamp the build number before every commit**: `<modVersion>` in

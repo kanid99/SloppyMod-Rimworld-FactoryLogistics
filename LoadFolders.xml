@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <loadFolders>
-  <!-- One build for both versions: 1.7 runs the 1.6 assembly unchanged. -->
+  <!-- One build for both versions: 1.7 runs the 1.6 assemblies unchanged.
+       Modules under Mods/ load only when the mod they extend is active. -->
   <v1.6>
     <li>/</li>
+    <li IfModActive="VanillaExpanded.VFEFactory">Mods/Belts</li>
   </v1.6>
   <v1.7>
     <li>/</li>
+    <li IfModActive="VanillaExpanded.VFEFactory">Mods/Belts</li>
   </v1.7>
 </loadFolders>
