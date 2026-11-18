@@ -129,6 +129,19 @@ namespace FactoryLogistics.Belts
             }
         }
 
+        public void Turn(Rot4 facing)
+        {
+            if (!Spawned || facing == Rotation)
+                return;
+            Map map = Map;
+            Rotation = facing;
+            status = null;
+            DirtyMapMesh(map);
+            LogisticsManager manager = LogisticsManager.For(map);
+            if (manager != null)
+                manager.MarkDirty();
+        }
+
         // ------------------------------------------------------------------ work
 
         protected override void Tick()
@@ -203,6 +216,21 @@ namespace FactoryLogistics.Belts
                 SetMode(mode == ArmMode.Loader ? ArmMode.Feeder : ArmMode.Loader);
             };
             yield return toggle;
+
+            // Turn it round where it stands: takes from the other side, puts down on this one.
+            Command_Action reverse = new Command_Action();
+            reverse.defaultLabel = "FactoryLogistics.ArmReverse".Translate();
+            reverse.defaultDesc = "FactoryLogistics.ArmReverseDesc".Translate();
+            reverse.icon = ContentFinder<Texture2D>.Get("UI/Widgets/RotRight");
+            reverse.action = delegate { Turn(Rotation.Opposite); };
+            yield return reverse;
+
+            Command_Action rotate = new Command_Action();
+            rotate.defaultLabel = "FactoryLogistics.ArmRotate".Translate();
+            rotate.defaultDesc = "FactoryLogistics.ArmRotateDesc".Translate();
+            rotate.icon = ContentFinder<Texture2D>.Get("UI/Widgets/RotLeft");
+            rotate.action = delegate { Turn(Rotation.Rotated(RotationDirection.Clockwise)); };
+            yield return rotate;
 
             if (mode == ArmMode.Feeder)
             {

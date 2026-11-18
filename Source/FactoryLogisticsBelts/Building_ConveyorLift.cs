@@ -183,6 +183,21 @@ namespace FactoryLogistics.Belts
             if (Faction != Faction.OfPlayer)
                 yield break;
 
+            Command_Action rotate = new Command_Action();
+            rotate.defaultLabel = "FactoryLogistics.LiftRotate".Translate();
+            rotate.defaultDesc = "FactoryLogistics.LiftRotateDesc".Translate();
+            rotate.icon = ContentFinder<Texture2D>.Get("UI/Widgets/RotLeft");
+            rotate.action = delegate
+            {
+                Map map = Map;
+                Rotation = Rotation.Rotated(RotationDirection.Clockwise);
+                DirtyMapMesh(map);
+                LogisticsManager manager = LogisticsManager.For(map);
+                if (manager != null)
+                    manager.MarkDirty();
+            };
+            yield return rotate;
+
             Command_Action link = new Command_Action();
             link.defaultLabel = "FactoryLogistics.LiftLink".Translate();
             link.defaultDesc = "FactoryLogistics.LiftLinkDesc".Translate();

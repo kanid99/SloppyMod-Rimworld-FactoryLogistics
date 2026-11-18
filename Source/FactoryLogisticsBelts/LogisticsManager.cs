@@ -55,6 +55,17 @@ namespace FactoryLogistics.Belts
         public SlotGroup storage;
         public MethodInfo acceptsMethod;
         public PropertyInfo capacityProp;
+        public MethodInfo refusalMethod;
+
+        // Why it will not take this item, if it can say (optional hook: string LogisticsRefusal(Thing)).
+        public string Refusal(Thing item)
+        {
+            if (refusalMethod != null)
+                return refusalMethod.Invoke(thing, new object[] { item }) as string;
+            if (storage != null && !storage.parent.Accepts(item))
+                return "FactoryLogistics.RefusedByStorage".Translate();
+            return null;
+        }
 
         public bool Accepts(Thing item)
         {
@@ -480,6 +491,7 @@ namespace FactoryLogistics.Belts
             consumer.thing = building;
             consumer.acceptsMethod = hook[1];
             consumer.capacityProp = hook[2] != null ? type.GetProperty("LogisticsCapacity", BindingFlags.Instance | BindingFlags.Public) : null;
+            consumer.refusalMethod = type.GetMethod("LogisticsRefusal", BindingFlags.Instance | BindingFlags.Public, null, new[] { typeof(Thing) }, null);
             return consumer;
         }
 
@@ -767,7 +779,30 @@ namespace FactoryLogistics.Belts
                 return;
             }
 
-            loader.status = "FactoryLogistics.LoaderNoStock".Translate(missing ?? "?");
+            loader.status = ExplainNoStock(loader, network, missing);
+        }
+
+        // Why a Loader found nothing to send: an empty source, or what the machine says about the
+        // first thing in it, so the player can see which setting to change.
+        private string ExplainNoStock(Building_LogisticsArm loader, LogisticsNetwork network, string missing)
+        {
+            Thing first = null;
+            foreach (Thing thing in loader.SourceThings())
+            {
+                first = thing;
+                break;
+            }
+            if (first == null)
+                return "FactoryLogistics.LoaderSourceEmpty".Translate();
+            if (network != null && network.consumer != null && network.consumer.vfe == null)
+            {
+                string why = network.consumer.Refusal(first);
+                if (!why.NullOrEmpty())
+                    return "FactoryLogistics.LoaderRefused".Translate(network.consumer.thing.LabelShort, first.LabelShort, why);
+                if (first.IsForbidden(Faction.OfPlayer))
+                    return "FactoryLogistics.LoaderRefused".Translate(network.consumer.thing.LabelShort, first.LabelShort, "FactoryLogistics.ForbiddenItem".Translate());
+            }
+            return "FactoryLogistics.LoaderNoStock".Translate(missing ?? "?");
         }
 
         public void WorkFeeder(Building_LogisticsArm feeder)

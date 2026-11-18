@@ -43,4 +43,14 @@
   <FactoryLogistics.JunctionNoBranches>No branch belts lead from this junction to a Feeder.</FactoryLogistics.JunctionNoBranches>
   <FactoryLogistics.JunctionRouted>Sent {0} towards the {1}.</FactoryLogistics.JunctionRouted>
   <FactoryLogistics.JunctionWaiting>Holding {0} until its branch has room.</FactoryLogistics.JunctionWaiting>
+  <FactoryLogistics.ArmReverse>Reverse</FactoryLogistics.ArmReverse>
+  <FactoryLogistics.ArmReverseDesc>Turn the arm round where it stands, so it takes from the side it was putting down on and puts down on the side it was taking from.</FactoryLogistics.ArmReverseDesc>
+  <FactoryLogistics.ArmRotate>Rotate</FactoryLogistics.ArmRotate>
+  <FactoryLogistics.ArmRotateDesc>Turn the arm a quarter turn clockwise where it stands. The gripper reaches into the cell it takes from; it puts down on the cell behind it.</FactoryLogistics.ArmRotateDesc>
+  <FactoryLogistics.LiftRotate>Rotate output</FactoryLogistics.LiftRotate>
+  <FactoryLogistics.LiftRotateDesc>Turn the side this lift puts items out on a quarter turn clockwise.</FactoryLogistics.LiftRotateDesc>
+  <FactoryLogistics.LoaderSourceEmpty>Nothing in the storage at its gripper. (The gripper faces the storage it takes from.)</FactoryLogistics.LoaderSourceEmpty>
+  <FactoryLogistics.LoaderRefused>The {0} will not take anything in its storage. First item, {1}: {2}.</FactoryLogistics.LoaderRefused>
+  <FactoryLogistics.RefusedByStorage>not allowed by the storage's settings</FactoryLogistics.RefusedByStorage>
+  <FactoryLogistics.ForbiddenItem>forbidden</FactoryLogistics.ForbiddenItem>
 </LanguageData>
