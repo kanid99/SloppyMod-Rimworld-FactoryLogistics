@@ -10,7 +10,7 @@ onto the belt), amber the Feeder (goods coming off it into a machine).
 import math
 import os
 
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from tubes_draw import (AMBER, AMBER_DARK, CASE, CASE_DARK, CASE_LIT, HOLE, OUTLINE, PLATE,
                         TEAL, TEAL_DARK, disc, finish, line, new_canvas, polygon, rect)
@@ -130,6 +130,38 @@ def icon_link():
     return finish(image, 64, 64)
 
 
+def junction():
+    """The belt junction, seen from above: a round diverter turntable on a square plate, with
+    an amber chevron pointing out of each side."""
+    image, draw = new_canvas(CELL, CELL)
+    c = CELL / 2
+    rect(draw, (12, 12, CELL - 12, CELL - 12), fill=OUTLINE, radius=12)
+    rect(draw, (16, 16, CELL - 16, CELL - 16), fill=PLATE, radius=10)
+    for angle in (0, 90, 180, 270):
+        layer, ldraw = new_canvas(CELL, CELL)
+        chevron_up(ldraw, c, 26, 9, AMBER)
+        image.alpha_composite(layer.rotate(angle, resample=Image.BICUBIC))
+        draw = ImageDraw.Draw(image)
+    disc(draw, c, c, 30, fill=OUTLINE)
+    disc(draw, c, c, 26, fill=CASE_DARK)
+    disc(draw, c, c - 2, 23, fill=CASE)
+    # The diverter blade.
+    line(draw, [(c - 18, c + 12), (c + 18, c - 12)], OUTLINE, 10)
+    line(draw, [(c - 16, c + 11), (c + 16, c - 11)], TEAL, 5)
+    disc(draw, c, c, 7, fill=OUTLINE)
+    disc(draw, c, c - 0.5, 4.5, fill=CASE_LIT)
+    return finish(image, CELL, CELL)
+
+
+def icon_priority():
+    image, draw = new_canvas(64, 64)
+    for i, (h, color) in enumerate(((16, CASE_LIT), (28, AMBER), (40, AMBER))):
+        x = 10 + i * 16
+        rect(draw, (x, 54 - h, x + 12, 54), fill=OUTLINE, radius=2)
+        rect(draw, (x + 2, 56 - h, x + 10, 52), fill=color, radius=2)
+    return finish(image, 64, 64)
+
+
 def save_multi(image, name):
     os.makedirs(BUILDING, exist_ok=True)
     # North as drawn; east is the north sprite turned a quarter clockwise; south half a turn.
@@ -156,6 +188,12 @@ def main():
     save_icon(feeder, "ArmFeeder")
     save_lift("ConveyorLift")
     save_icon(icon_link(), "LiftLink")
+    junction_image = junction()
+    os.makedirs(BUILDING, exist_ok=True)
+    junction_image.save(os.path.join(BUILDING, "BeltJunction.png"))
+    print("wrote", os.path.join(BUILDING, "BeltJunction.png"))
+    save_icon(junction_image, "BeltJunction")
+    save_icon(icon_priority(), "FeederPriority")
 
 
 if __name__ == "__main__":

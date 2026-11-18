@@ -31,4 +31,15 @@
   <FactoryLogistics.LiftLinkDesc>Choose another conveyor lift for this one to send to. A link made by hand overrides the automatic pairing between levels.</FactoryLogistics.LiftLinkDesc>
   <FactoryLogistics.LiftUnlink>Clear link</FactoryLogistics.LiftUnlink>
   <FactoryLogistics.LiftUnlinkDesc>Remove the hand-made link and go back to pairing with the lift a level up or down.</FactoryLogistics.LiftUnlinkDesc>
+  <FactoryLogistics.FeederPriority>Junction priority: {0}</FactoryLogistics.FeederPriority>
+  <FactoryLogistics.FeederPriorityDesc>When this Feeder's belts start at a belt junction, a higher priority gets first claim on what comes down the trunk. Feeders of equal priority take turns.</FactoryLogistics.FeederPriorityDesc>
+  <FactoryLogistics.Priority_1>low</FactoryLogistics.Priority_1>
+  <FactoryLogistics.Priority_2>normal</FactoryLogistics.Priority_2>
+  <FactoryLogistics.Priority_3>high</FactoryLogistics.Priority_3>
+  <FactoryLogistics.FeedingFromJunction>Feeding the {0} through a junction ({1} loader(s) on its own belts).</FactoryLogistics.FeedingFromJunction>
+  <FactoryLogistics.ServingJunction>Loading a junction trunk for {0} machine(s).</FactoryLogistics.ServingJunction>
+  <FactoryLogistics.JunctionSummary>Splitting to {0} machine(s), fed by {1} loader(s) on the trunk.</FactoryLogistics.JunctionSummary>
+  <FactoryLogistics.JunctionNoBranches>No branch belts lead from this junction to a Feeder.</FactoryLogistics.JunctionNoBranches>
+  <FactoryLogistics.JunctionRouted>Sent {0} towards the {1}.</FactoryLogistics.JunctionRouted>
+  <FactoryLogistics.JunctionWaiting>Holding {0} until its branch has room.</FactoryLogistics.JunctionWaiting>
 </LanguageData>

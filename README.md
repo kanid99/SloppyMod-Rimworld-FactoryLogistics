@@ -30,11 +30,18 @@ It is one mod in modules:
    notice when a belt is built or removed. Source: `Source/FactoryLogisticsBelts`,
    assembly `Mods/Belts/Assemblies/FactoryLogisticsBelts.dll`, art
    `Source/Art/belts_art.py`.
-3. **Shared request layer:** feeders post their machine's needs; belts and tubes
-   both fill them.
-4. **Bridges:** an auto-unpacking tube receiver that loaders can draw from, and
-   pack bills driven by machine demand. Later: a junction that routes one supply
-   trunk to several feeders, with priorities and per-machine in-transit caps.
+3. **Junction** (0.9.9): a trunk belt drops onto a non-edifice junction; belts
+   leaving its other sides each end at a Feeder. Trunk Loaders send the sum of
+   what those machines lack (less what is on the trunk), and the junction routes
+   each item to the wanting branch with the highest Feeder priority, then the
+   one served longest ago. Unwanted items are set down beside it.
+4. **Conveyor lift** (0.9.8) and **vehicle tube dock** (0.9.7); capsule weight
+   limit and weight-scaled launch air (0.9.6). As above, So below support:
+   tubes use its generated air risers, flight time is measured on one level
+   plus 8 cells per level (`LevelUtility`, reflection only), and lifts pair
+   with the lift on the same spot a level up or down.
+5. Later: an auto-unpacking tube receiver that Loaders can draw from, and pack
+   bills driven by machine demand (tubes and belts sharing one request layer).
 
 # Pneumatic tubes
 

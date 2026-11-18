@@ -7,18 +7,33 @@ using VanillaFurnitureExpandedFactory;
 
 namespace FactoryLogistics.Belts
 {
-    // One belt network: a Feeder at its end, every conveyor that leads to it, the Loaders that put
-    // onto those conveyors, and the VFE Factory machine the Feeder serves.
-    public class LogisticsNetwork
+    // A run of belts that ends somewhere: at a Feeder (a branch) or at a junction (a trunk).
+    // Holds every conveyor that leads there, the lifts it passes through, and the Loaders that
+    // put onto it.
+    public class BeltRun
+    {
+        public readonly HashSet<Building_Conveyor> belts = new HashSet<Building_Conveyor>();
+        public readonly HashSet<Building_ConveyorLift> lifts = new HashSet<Building_ConveyorLift>();
+        public readonly List<Building_LogisticsArm> loaders = new List<Building_LogisticsArm>();
+    }
+
+    // One Feeder's network: its machine and the belts that lead to it. If the head of those belts
+    // is a junction's output, the Feeder is one of that junction's branches.
+    public class LogisticsNetwork : BeltRun
     {
         public Building_LogisticsArm feeder;
         public CompAdvancedResourceProcessor machine;
-        public readonly HashSet<Building_Conveyor> belts = new HashSet<Building_Conveyor>();
-        public readonly List<Building_LogisticsArm> loaders = new List<Building_LogisticsArm>();
-        public readonly HashSet<Building_ConveyorLift> lifts = new HashSet<Building_ConveyorLift>();
+        public Building_BeltJunction junction;
 
-        // Set when an earlier Feeder already owns these belts: one Feeder per network.
+        // Set when an earlier Feeder already owns these belts: one Feeder per run of belts.
         public Building_LogisticsArm pausedBy;
+    }
+
+    // A junction, the trunk of belts that leads into it, and the Feeder branches it splits to.
+    public class JunctionGroup : BeltRun
+    {
+        public Building_BeltJunction junction;
+        public readonly List<LogisticsNetwork> branches = new List<LogisticsNetwork>();
     }
 
     // What a machine still needs of one ingredient: a specific item, or anything in a category
@@ -56,16 +71,17 @@ namespace FactoryLogistics.Belts
     // from what is built, so a save never carries stale routing.
     //
     // VFE gives no notice when a conveyor is built or removed, so networks are rebuilt every
-    // couple of seconds as well as whenever an arm changes - cheap, since the walk only follows
-    // belts that actually lead to a Feeder.
+    // couple of seconds as well as whenever an arm, lift or junction changes - cheap, since the
+    // walk only follows belts that actually lead to a Feeder or a junction.
     public class LogisticsManager : MapComponent
     {
         private const int RebuildInterval = 120;
         private const float MachineSearchRadius = 8f;
 
         private readonly List<LogisticsNetwork> networks = new List<LogisticsNetwork>();
-        private readonly Dictionary<Building_LogisticsArm, LogisticsNetwork> byArm =
-            new Dictionary<Building_LogisticsArm, LogisticsNetwork>();
+        private readonly List<JunctionGroup> groups = new List<JunctionGroup>();
+        private readonly Dictionary<Building_LogisticsArm, BeltRun> byArm = new Dictionary<Building_LogisticsArm, BeltRun>();
+        private readonly Dictionary<Building_BeltJunction, JunctionGroup> byJunction = new Dictionary<Building_BeltJunction, JunctionGroup>();
         private bool dirty = true;
         private int builtAt = -99999;
 
@@ -103,15 +119,17 @@ namespace FactoryLogistics.Belts
             return null;
         }
 
-        public static IEnumerable<Building_LogisticsArm> AllArms(Map map)
+        private static List<T> AllOf<T>(Map map) where T : Building
         {
+            List<T> result = new List<T>();
             List<Thing> things = map.listerThings.ThingsInGroup(ThingRequestGroup.BuildingArtificial);
             for (int i = 0; i < things.Count; i++)
             {
-                Building_LogisticsArm arm = things[i] as Building_LogisticsArm;
-                if (arm != null)
-                    yield return arm;
+                T thing = things[i] as T;
+                if (thing != null)
+                    result.Add(thing);
             }
+            return result;
         }
 
         // ------------------------------------------------------------------ networks
@@ -125,44 +143,41 @@ namespace FactoryLogistics.Belts
             dirty = false;
             builtAt = now;
             networks.Clear();
+            groups.Clear();
             byArm.Clear();
+            byJunction.Clear();
 
             List<Building_LogisticsArm> feeders = new List<Building_LogisticsArm>();
             List<Building_LogisticsArm> loaders = new List<Building_LogisticsArm>();
-            foreach (Building_LogisticsArm arm in AllArms(map))
+            foreach (Building_LogisticsArm arm in AllOf<Building_LogisticsArm>(map))
             {
                 if (arm.Mode == ArmMode.Feeder)
                     feeders.Add(arm);
                 else
                     loaders.Add(arm);
             }
+            List<Building_ConveyorLift> allLifts = AllOf<Building_ConveyorLift>(map);
+            List<Building_BeltJunction> junctions = AllOf<Building_BeltJunction>(map);
 
-            // Oldest Feeder first, so the one that keeps a contested belt is always the same one.
+            // Oldest first, so whatever keeps a contested belt is always the same one.
             feeders.SortBy(a => a.thingIDNumber);
+            junctions.SortBy(j => j.thingIDNumber);
 
-            List<Building_ConveyorLift> allLifts = new List<Building_ConveyorLift>();
-            List<Thing> buildings = map.listerThings.ThingsInGroup(ThingRequestGroup.BuildingArtificial);
-            for (int i = 0; i < buildings.Count; i++)
-            {
-                Building_ConveyorLift lift = buildings[i] as Building_ConveyorLift;
-                if (lift != null)
-                    allLifts.Add(lift);
-            }
+            Dictionary<Building_Conveyor, BeltRun> claimed = new Dictionary<Building_Conveyor, BeltRun>();
 
-            Dictionary<Building_Conveyor, LogisticsNetwork> claimed = new Dictionary<Building_Conveyor, LogisticsNetwork>();
             foreach (Building_LogisticsArm feeder in feeders)
             {
                 LogisticsNetwork network = new LogisticsNetwork();
                 network.feeder = feeder;
-                CollectBelts(feeder, network, allLifts);
+                CollectBelts(feeder.Position, network, allLifts);
 
                 LogisticsNetwork owner = null;
                 foreach (Building_Conveyor belt in network.belts)
                 {
-                    LogisticsNetwork other;
+                    BeltRun other;
                     if (claimed.TryGetValue(belt, out other))
                     {
-                        owner = other;
+                        owner = other as LogisticsNetwork;
                         break;
                     }
                 }
@@ -177,6 +192,7 @@ namespace FactoryLogistics.Belts
                 {
                     foreach (Building_Conveyor belt in network.belts)
                         claimed[belt] = network;
+                    network.junction = JunctionFeeding(network, junctions);
                 }
 
                 network.machine = FindMachine(feeder);
@@ -184,33 +200,74 @@ namespace FactoryLogistics.Belts
                 byArm[feeder] = network;
             }
 
+            foreach (Building_BeltJunction junction in junctions)
+            {
+                JunctionGroup group = new JunctionGroup();
+                group.junction = junction;
+                CollectBelts(junction.Position, group, allLifts);
+                List<Building_Conveyor> taken = new List<Building_Conveyor>();
+                foreach (Building_Conveyor belt in group.belts)
+                {
+                    if (claimed.ContainsKey(belt))
+                        taken.Add(belt);
+                }
+                foreach (Building_Conveyor belt in taken)
+                    group.belts.Remove(belt);
+                foreach (Building_Conveyor belt in group.belts)
+                    claimed[belt] = group;
+
+                foreach (LogisticsNetwork network in networks)
+                {
+                    if (network.junction == junction)
+                        group.branches.Add(network);
+                }
+                groups.Add(group);
+                byJunction[junction] = group;
+            }
+
             foreach (Building_LogisticsArm loader in loaders)
             {
                 Building_Conveyor belt = loader.FrontConveyor;
-                LogisticsNetwork network;
-                if (belt != null && claimed.TryGetValue(belt, out network))
+                BeltRun run;
+                if (belt != null && claimed.TryGetValue(belt, out run))
                 {
-                    network.loaders.Add(loader);
-                    byArm[loader] = network;
+                    run.loaders.Add(loader);
+                    byArm[loader] = run;
                 }
             }
         }
 
-        // Every conveyor that leads to the Feeder: start at the belt whose end points at it and
-        // walk back up every belt that feeds into one already found. Merges are followed, and so
-        // are underground conveyors (an exit leads back to the entrance it is linked to) and lifts
-        // (a lift putting onto a belt leads back to every lift sending to it, and the belts that
-        // drop onto those).
-        private void CollectBelts(Building_LogisticsArm feeder, LogisticsNetwork network, List<Building_ConveyorLift> allLifts)
+        // The junction whose output the head of this branch takes from: a branch belt beside a
+        // junction that does not point into it.
+        private static Building_BeltJunction JunctionFeeding(LogisticsNetwork network, List<Building_BeltJunction> junctions)
         {
-            HashSet<Building_Conveyor> belts = network.belts;
-            Building_Conveyor last = feeder.BackConveyor;
-            if (last == null || last.ForwardCell != feeder.Position)
-                return;
+            foreach (Building_BeltJunction junction in junctions)
+            {
+                for (int i = 0; i < 4; i++)
+                {
+                    Building_Conveyor belt = ConveyorAt(junction.Position + GenAdj.CardinalDirections[i], junction.Map);
+                    if (belt != null && belt.ForwardCell != junction.Position && network.belts.Contains(belt))
+                        return junction;
+                }
+            }
+            return null;
+        }
 
+        // Every conveyor that leads to the target cell (a Feeder or a junction): start at the belts
+        // whose end points at it and walk back up every belt that feeds into one already found.
+        // Merges are followed, and so are underground conveyors (an exit leads back to the
+        // entrance it is linked to) and lifts (a lift putting onto a belt leads back to every lift
+        // sending to it, and the belts that drop onto those).
+        private void CollectBelts(IntVec3 target, BeltRun run, List<Building_ConveyorLift> allLifts)
+        {
+            HashSet<Building_Conveyor> belts = run.belts;
             Queue<Building_Conveyor> open = new Queue<Building_Conveyor>();
-            belts.Add(last);
-            open.Enqueue(last);
+            for (int i = 0; i < 4; i++)
+            {
+                Building_Conveyor last = ConveyorAt(target + GenAdj.CardinalDirections[i], map);
+                if (last != null && last.ForwardCell == target && !(last is Building_UndergroundConveyorEntrance) && belts.Add(last))
+                    open.Enqueue(last);
+            }
 
             while (open.Count > 0)
             {
@@ -226,8 +283,7 @@ namespace FactoryLogistics.Belts
 
                 for (int i = 0; i < 4; i++)
                 {
-                    IntVec3 cell = belt.Position + GenAdj.CardinalDirections[i];
-                    Building_Conveyor upstream = ConveyorAt(cell, map);
+                    Building_Conveyor upstream = ConveyorAt(belt.Position + GenAdj.CardinalDirections[i], map);
                     if (upstream != null && !belts.Contains(upstream)
                         && !(upstream is Building_UndergroundConveyorEntrance)   // its forward cell is not where items come out
                         && upstream.ForwardCell == belt.Position)
@@ -246,7 +302,7 @@ namespace FactoryLogistics.Belts
                     for (int j = 0; j < allLifts.Count; j++)
                     {
                         Building_ConveyorLift input = allLifts[j];
-                        if (input == output || input.Partner != output || !network.lifts.Add(input))
+                        if (input == output || input.Partner != output || !run.lifts.Add(input))
                             continue;
                         for (int k = 0; k < 4; k++)
                         {
@@ -344,11 +400,10 @@ namespace FactoryLogistics.Belts
             return null;
         }
 
-        private int CountOn(IntVec3 cell, Need need)
+        private int CountLoose(IntVec3 cell, Need need)
         {
             if (!cell.InBounds(map))
                 return 0;
-
             int count = 0;
             List<Thing> things = cell.GetThingList(map);
             for (int i = 0; i < things.Count; i++)
@@ -357,11 +412,16 @@ namespace FactoryLogistics.Belts
                 if (thing.def.category == ThingCategory.Item && need.Matches(thing.def))
                     count += thing.stackCount;
             }
+            return count;
+        }
 
+        // Lying on the cell, or carried by a conveyor standing on it.
+        private int CountOn(IntVec3 cell, Need need)
+        {
+            int count = CountLoose(cell, need);
             Building_Conveyor conveyor = ConveyorAt(cell, map);
             if (conveyor != null)
                 count += CountIn(conveyor, need);
-
             return count;
         }
 
@@ -380,26 +440,96 @@ namespace FactoryLogistics.Belts
             return count;
         }
 
-        // Already on its way or already delivered: on the belts, lying on a belt cell waiting to be
-        // picked up, on the Feeder, or in the machine's input slot. A Loader only ever sends what
-        // is still missing after all of that, so the network never over-sends.
+        // On a run's belts, lying on its belt cells waiting to be picked up, or waiting on its lifts.
+        private int CountOnRun(BeltRun run, Need need)
+        {
+            int count = 0;
+            foreach (Building_Conveyor belt in run.belts)
+                count += CountIn(belt, need) + CountLoose(belt.Position, need);
+            foreach (Building_ConveyorLift lift in run.lifts)
+                count += CountLoose(lift.Position, need);
+            return count;
+        }
+
+        // Already on its way to this Feeder or already delivered: on its belts and lifts, on the
+        // Feeder, or in the machine's input slot.
         private int CountInFlight(LogisticsNetwork network, Need need)
         {
-            int count = CountOn(network.feeder.Position, need) + CountOn(network.feeder.FrontCell, need);
-            foreach (Building_ConveyorLift lift in network.lifts)
-                count += CountOn(lift.Position, need);
-            foreach (Building_Conveyor belt in network.belts)
-            {
-                count += CountIn(belt, need);
-                List<Thing> things = belt.Position.GetThingList(map);
-                for (int i = 0; i < things.Count; i++)
-                {
-                    if (things[i].def.category == ThingCategory.Item && need.Matches(things[i].def))
-                        count += things[i].stackCount;
-                }
-            }
+            return CountOnRun(network, need) + CountOn(network.feeder.Position, need) + CountOn(network.feeder.FrontCell, need);
+        }
 
-            return count;
+        // What a Feeder's machine still lacks once everything already on its way is counted.
+        private List<Need> Outstanding(LogisticsNetwork network)
+        {
+            List<Need> result = new List<Need>();
+            if (network.machine == null || network.pausedBy != null)
+                return result;
+            foreach (Need need in NeedsOf(network.machine))
+            {
+                Need left = need;
+                left.count = need.count - CountInFlight(network, need);
+                if (left.count > 0)
+                    result.Add(left);
+            }
+            return result;
+        }
+
+        // What a junction's trunk should carry: everything its branches still lack, less what is
+        // already on the trunk or waiting on the junction. Higher-priority branches come first.
+        private List<Need> Outstanding(JunctionGroup group)
+        {
+            List<Need> result = new List<Need>();
+            List<LogisticsNetwork> branches = new List<LogisticsNetwork>(group.branches);
+            branches.SortByDescending(b => b.feeder.Priority);
+            foreach (LogisticsNetwork branch in branches)
+                result.AddRange(Outstanding(branch));
+
+            // Hand out what is already on the trunk to those needs in order.
+            List<Thing> trunkItems = new List<Thing>();
+            foreach (Building_Conveyor belt in group.belts)
+            {
+                if (belt.innerContainer != null)
+                    trunkItems.AddRange(belt.innerContainer);
+                AddLoose(belt.Position, trunkItems);
+            }
+            foreach (Building_ConveyorLift lift in group.lifts)
+                AddLoose(lift.Position, trunkItems);
+            AddLoose(group.junction.Position, trunkItems);
+
+            Dictionary<Thing, int> left = new Dictionary<Thing, int>();
+            foreach (Thing thing in trunkItems)
+                left[thing] = thing.stackCount;
+
+            for (int i = 0; i < result.Count; i++)
+            {
+                Need need = result[i];
+                foreach (Thing thing in trunkItems)
+                {
+                    if (need.count <= 0)
+                        break;
+                    int have = left[thing];
+                    if (have <= 0 || !need.Matches(thing.def))
+                        continue;
+                    int used = UnityEngine.Mathf.Min(have, need.count);
+                    left[thing] = have - used;
+                    need.count -= used;
+                }
+                result[i] = need;
+            }
+            result.RemoveAll(n => n.count <= 0);
+            return result;
+        }
+
+        private void AddLoose(IntVec3 cell, List<Thing> into)
+        {
+            if (!cell.InBounds(map))
+                return;
+            List<Thing> things = cell.GetThingList(map);
+            for (int i = 0; i < things.Count; i++)
+            {
+                if (things[i].def.category == ThingCategory.Item)
+                    into.Add(things[i]);
+            }
         }
 
         // ------------------------------------------------------------------ work
@@ -408,8 +538,8 @@ namespace FactoryLogistics.Belts
         {
             EnsureBuilt();
 
-            LogisticsNetwork network;
-            if (!byArm.TryGetValue(loader, out network))
+            BeltRun run;
+            if (!byArm.TryGetValue(loader, out run))
             {
                 loader.status = loader.FrontConveyor == null
                     ? "FactoryLogistics.LoaderNoBelt".Translate().ToString()
@@ -417,9 +547,16 @@ namespace FactoryLogistics.Belts
                 return;
             }
 
-            if (network.machine == null)
+            LogisticsNetwork network = run as LogisticsNetwork;
+            JunctionGroup group = run as JunctionGroup;
+            if (network != null && network.machine == null)
             {
                 loader.status = "FactoryLogistics.NoMachine".Translate();
+                return;
+            }
+            if (group != null && group.branches.Count == 0)
+            {
+                loader.status = "FactoryLogistics.JunctionNoBranches".Translate();
                 return;
             }
 
@@ -434,20 +571,16 @@ namespace FactoryLogistics.Belts
                 return;
             }
 
-            List<Need> needs = NeedsOf(network.machine);
-            if (needs.Count == 0)
+            List<Need> outstanding = network != null ? Outstanding(network) : Outstanding(group);
+            if (outstanding.Count == 0)
             {
-                loader.status = "FactoryLogistics.MachineSatisfied".Translate();
+                loader.status = "FactoryLogistics.MachineCovered".Translate();
                 return;
             }
 
             string missing = null;
-            foreach (Need need in needs)
+            foreach (Need need in outstanding)
             {
-                int outstanding = need.count - CountInFlight(network, need);
-                if (outstanding <= 0)
-                    continue;
-
                 Thing source = null;
                 foreach (Thing thing in loader.SourceThings())
                 {
@@ -466,7 +599,7 @@ namespace FactoryLogistics.Belts
                     continue;
                 }
 
-                int take = UnityEngine.Mathf.Min(outstanding, source.stackCount);
+                int take = UnityEngine.Mathf.Min(need.count, source.stackCount);
                 IntVec3 from = source.Position;
                 Thing sent = source.SplitOff(take);
                 if (sent.Spawned)
@@ -479,21 +612,21 @@ namespace FactoryLogistics.Belts
                     return;
                 }
 
-                loader.status = "FactoryLogistics.LoaderSent".Translate(sent.LabelCap, network.machine.parent.LabelShort);
+                string to = network != null ? network.machine.parent.LabelShort : group.junction.LabelShort;
+                loader.status = "FactoryLogistics.LoaderSent".Translate(sent.LabelCap, to);
                 return;
             }
 
-            loader.status = missing != null
-                ? "FactoryLogistics.LoaderNoStock".Translate(missing).ToString()
-                : "FactoryLogistics.MachineCovered".Translate().ToString();
+            loader.status = "FactoryLogistics.LoaderNoStock".Translate(missing ?? "?");
         }
 
         public void WorkFeeder(Building_LogisticsArm feeder)
         {
             EnsureBuilt();
 
-            LogisticsNetwork network;
-            byArm.TryGetValue(feeder, out network);
+            BeltRun run;
+            byArm.TryGetValue(feeder, out run);
+            LogisticsNetwork network = run as LogisticsNetwork;
             if (network != null && network.pausedBy != null)
             {
                 feeder.status = "FactoryLogistics.FeederPaused".Translate(network.pausedBy.LabelShort);
@@ -501,12 +634,7 @@ namespace FactoryLogistics.Belts
             }
 
             List<Thing> arrived = new List<Thing>();
-            List<Thing> here = feeder.Position.GetThingList(map);
-            for (int i = 0; i < here.Count; i++)
-            {
-                if (here[i].def.category == ThingCategory.Item)
-                    arrived.Add(here[i]);
-            }
+            AddLoose(feeder.Position, arrived);
 
             bool hasMachine = network != null && network.machine != null;
             if (arrived.Count == 0)
@@ -540,8 +668,93 @@ namespace FactoryLogistics.Belts
 
                 // Nothing on this network wants it any more - the process finished or changed, or
                 // it reached the belt some other way. Off the belt it goes, so it never jams.
-                DropStray(feeder, thing);
+                string label = thing.LabelCap;
+                if (DropStray(feeder.Position, feeder.FrontCell, thing))
+                    feeder.status = "FactoryLogistics.FeederDropped".Translate(label);
             }
+        }
+
+        // A junction passes each item that reaches it to the branch that wants it most, onto the
+        // head belt of that branch. Items no branch wants are set down beside it.
+        public void WorkJunction(Building_BeltJunction junction)
+        {
+            EnsureBuilt();
+
+            JunctionGroup group;
+            if (!byJunction.TryGetValue(junction, out group))
+                return;
+
+            List<Thing> arrived = new List<Thing>();
+            AddLoose(junction.Position, arrived);
+            if (arrived.Count == 0)
+            {
+                junction.status = group.branches.Count == 0 ? "FactoryLogistics.JunctionNoBranches".Translate().ToString() : null;
+                return;
+            }
+
+            // Highest priority first; among equals, the branch served longest ago.
+            List<LogisticsNetwork> branches = new List<LogisticsNetwork>(group.branches);
+            branches.SortByDescending(b => b.feeder.Priority * 10000000 + junction.ServedAgo(b.feeder));
+
+            foreach (Thing thing in arrived)
+            {
+                bool someoneWants = false;
+                foreach (LogisticsNetwork branch in branches)
+                {
+                    bool wants = false;
+                    foreach (Need need in Outstanding(branch))
+                    {
+                        if (need.Matches(thing.def))
+                        {
+                            wants = true;
+                            break;
+                        }
+                    }
+                    if (!wants)
+                        continue;
+                    someoneWants = true;
+
+                    Building_Conveyor head = HeadBelt(junction, branch);
+                    if (head == null || !head.HasSpace() || !head.CanAcceptItem(thing))
+                        continue;   // try the next branch that wants it; if none has room, hold it
+
+                    string label = thing.LabelCap;
+                    thing.DeSpawn();
+                    if (head.TryAdd(thing))
+                    {
+                        junction.NoteServed(branch.feeder);
+                        junction.status = "FactoryLogistics.JunctionRouted".Translate(label,
+                            branch.machine != null ? branch.machine.parent.LabelShort : branch.feeder.LabelShort);
+                    }
+                    else
+                    {
+                        GenSpawn.Spawn(thing, junction.Position, map);
+                    }
+                    break;
+                }
+
+                if (!someoneWants)
+                {
+                    string label = thing.LabelCap;
+                    if (DropStray(junction.Position, IntVec3.Invalid, thing))
+                        junction.status = "FactoryLogistics.FeederDropped".Translate(label);
+                }
+                else if (thing.Spawned && thing.Position == junction.Position)
+                {
+                    junction.status = "FactoryLogistics.JunctionWaiting".Translate(thing.LabelCap);
+                }
+            }
+        }
+
+        private Building_Conveyor HeadBelt(Building_BeltJunction junction, LogisticsNetwork branch)
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                Building_Conveyor belt = ConveyorAt(junction.Position + GenAdj.CardinalDirections[i], map);
+                if (belt != null && belt.ForwardCell != junction.Position && branch.belts.Contains(belt))
+                    return belt;
+            }
+            return null;
         }
 
         // Into the conveyor or factory hopper on the machine's input slot.
@@ -569,23 +782,29 @@ namespace FactoryLogistics.Belts
             return false;
         }
 
-        private void DropStray(Building_LogisticsArm feeder, Thing thing)
+        // Off the line: onto a free floor cell nearby that is not a belt or one of this module's
+        // buildings, so it never re-enters the line.
+        private bool DropStray(IntVec3 self, IntVec3 avoid, Thing thing)
         {
             IntVec3 at = thing.Position;
-            IntVec3 front = feeder.FrontCell;
-            IntVec3 self = feeder.Position;
             Map m = map;
             thing.DeSpawn();
             bool placed = GenPlace.TryPlaceThing(thing, self, m, ThingPlaceMode.Near, null,
-                delegate (IntVec3 c) { return c != self && c != front && ConveyorAt(c, m) == null && c.Standable(m); });
-            if (!placed)
-            {
-                if (!thing.Destroyed && !thing.Spawned)
-                    GenSpawn.Spawn(thing, at, m);
-                return;
-            }
-
-            feeder.status = "FactoryLogistics.FeederDropped".Translate(thing.LabelCap);
+                delegate (IntVec3 c)
+                {
+                    if (c == self || c == avoid || ConveyorAt(c, m) != null || !c.Standable(m))
+                        return false;
+                    List<Thing> things = c.GetThingList(m);
+                    for (int i = 0; i < things.Count; i++)
+                    {
+                        if (things[i] is Building_LogisticsArm || things[i] is Building_ConveyorLift || things[i] is Building_BeltJunction)
+                            return false;
+                    }
+                    return true;
+                });
+            if (!placed && !thing.Destroyed && !thing.Spawned)
+                GenSpawn.Spawn(thing, at, m);
+            return placed;
         }
 
         // ------------------------------------------------------------------ UI
@@ -593,20 +812,53 @@ namespace FactoryLogistics.Belts
         public Thing MachineFor(Building_LogisticsArm arm)
         {
             EnsureBuilt();
-            LogisticsNetwork network;
-            if (byArm.TryGetValue(arm, out network) && network.machine != null)
-                return network.machine.parent;
-            return null;
+            BeltRun run;
+            if (!byArm.TryGetValue(arm, out run))
+                return null;
+            LogisticsNetwork network = run as LogisticsNetwork;
+            if (network != null)
+                return network.machine != null ? network.machine.parent : null;
+            JunctionGroup group = run as JunctionGroup;
+            return group != null ? group.junction : null;
+        }
+
+        public List<Thing> BranchMachines(Building_BeltJunction junction)
+        {
+            EnsureBuilt();
+            List<Thing> result = new List<Thing>();
+            JunctionGroup group;
+            if (!byJunction.TryGetValue(junction, out group))
+                return result;
+            foreach (LogisticsNetwork branch in group.branches)
+                result.Add(branch.machine != null ? (Thing)branch.machine.parent : branch.feeder);
+            return result;
+        }
+
+        private static string NeedsLine(List<Need> needs)
+        {
+            List<string> parts = new List<string>();
+            foreach (Need need in needs)
+                parts.Add(need.count + " " + need.Label);
+            return "FactoryLogistics.CallingFor".Translate(string.Join(", ", parts.ToArray()));
         }
 
         public string DescribeFor(Building_LogisticsArm arm)
         {
             EnsureBuilt();
 
-            LogisticsNetwork network;
-            if (!byArm.TryGetValue(arm, out network))
+            BeltRun run;
+            if (!byArm.TryGetValue(arm, out run))
                 return arm.Mode == ArmMode.Loader ? "FactoryLogistics.LoaderNoFeeder".Translate().ToString() : null;
 
+            JunctionGroup group = run as JunctionGroup;
+            if (group != null)
+            {
+                string head = "FactoryLogistics.ServingJunction".Translate(group.branches.Count);
+                List<Need> wanted = Outstanding(group);
+                return wanted.Count == 0 ? head : head + "\n" + NeedsLine(wanted);
+            }
+
+            LogisticsNetwork network = (LogisticsNetwork)run;
             if (network.pausedBy != null)
                 return "FactoryLogistics.FeederPaused".Translate(network.pausedBy.LabelShort);
 
@@ -615,17 +867,32 @@ namespace FactoryLogistics.Belts
 
             List<Need> needs = NeedsOf(network.machine);
             string machine = network.machine.parent.LabelShort;
-            string line = arm.Mode == ArmMode.Feeder
-                ? "FactoryLogistics.Feeding".Translate(machine, network.loaders.Count).ToString()
-                : "FactoryLogistics.Serving".Translate(machine).ToString();
+            string line;
+            if (arm.Mode == ArmMode.Feeder)
+            {
+                line = network.junction != null
+                    ? "FactoryLogistics.FeedingFromJunction".Translate(machine, network.loaders.Count).ToString()
+                    : "FactoryLogistics.Feeding".Translate(machine, network.loaders.Count).ToString();
+                line += "\n" + "FactoryLogistics.FeederPriority".Translate(("FactoryLogistics.Priority_" + arm.Priority).Translate());
+            }
+            else
+                line = "FactoryLogistics.Serving".Translate(machine).ToString();
 
             if (needs.Count == 0)
                 return line + "\n" + "FactoryLogistics.MachineSatisfied".Translate();
 
-            List<string> parts = new List<string>();
-            foreach (Need need in needs)
-                parts.Add(need.count + " " + need.Label);
-            return line + "\n" + "FactoryLogistics.CallingFor".Translate(string.Join(", ", parts.ToArray()));
+            return line + "\n" + NeedsLine(needs);
+        }
+
+        public string DescribeFor(Building_BeltJunction junction)
+        {
+            EnsureBuilt();
+            JunctionGroup group;
+            if (!byJunction.TryGetValue(junction, out group))
+                return null;
+            string line = "FactoryLogistics.JunctionSummary".Translate(group.branches.Count, group.loaders.Count);
+            List<Need> wanted = Outstanding(group);
+            return wanted.Count == 0 ? line : line + "\n" + NeedsLine(wanted);
         }
     }
 }

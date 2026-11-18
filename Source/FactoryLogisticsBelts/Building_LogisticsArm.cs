@@ -27,6 +27,7 @@ namespace FactoryLogistics.Belts
     public class Building_LogisticsArm : Building
     {
         private ArmMode mode = ArmMode.Loader;
+        private int priority = 2;
         private const int WorkInterval = 30;
 
         // Status for the inspect pane, set by the last work step.
@@ -38,6 +39,12 @@ namespace FactoryLogistics.Belts
         public ArmMode Mode
         {
             get { return mode; }
+        }
+
+        /// <summary>A Feeder's claim on a junction's trunk: 1 low, 2 normal, 3 high.</summary>
+        public int Priority
+        {
+            get { return priority; }
         }
 
         public IntVec3 BackCell
@@ -77,6 +84,7 @@ namespace FactoryLogistics.Belts
         {
             base.ExposeData();
             Scribe_Values.Look(ref mode, "mode", ArmMode.Loader);
+            Scribe_Values.Look(ref priority, "priority", 2);
         }
 
         // ------------------------------------------------------------------ graphics
@@ -196,6 +204,16 @@ namespace FactoryLogistics.Belts
                 SetMode(mode == ArmMode.Loader ? ArmMode.Feeder : ArmMode.Loader);
             };
             yield return toggle;
+
+            if (mode == ArmMode.Feeder)
+            {
+                Command_Action prio = new Command_Action();
+                prio.defaultLabel = "FactoryLogistics.FeederPriority".Translate(("FactoryLogistics.Priority_" + priority).Translate());
+                prio.defaultDesc = "FactoryLogistics.FeederPriorityDesc".Translate();
+                prio.icon = ContentFinder<Texture2D>.Get("UI/Commands/FactoryLogistics/FeederPriority");
+                prio.action = delegate { priority = priority >= 3 ? 1 : priority + 1; };
+                yield return prio;
+            }
         }
 
         public override string GetInspectString()

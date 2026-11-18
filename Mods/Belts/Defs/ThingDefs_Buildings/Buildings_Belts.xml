@@ -115,4 +115,59 @@ Conveyor arm networks follow belts through lifts, so a Loader on one level can s
     <constructEffect>ConstructMetal</constructEffect>
   </ThingDef>
 
+  <!--
+    The belt junction: a trunk belt drops onto it, and it passes each item onto the branch belt
+    (one of its other sides) whose Feeder's machine wants it.
+  -->
+  <ThingDef ParentName="BuildingBase">
+    <defName>FL_BeltJunction</defName>
+    <label>belt junction</label>
+    <description>Splits one supply belt between several factory machines. Point the supply belt (the trunk) at the junction, and run belts away from its other sides, each ending at a conveyor arm Feeder for a machine.
+
+Loaders on the trunk send what all those machines still lack, and the junction passes each item onto the branch that wants it: the Feeder with the highest priority first, then whichever was served longest ago. An item no machine wants any more is set down beside the junction, so the trunk never jams; one a branch wants but has no room for yet waits on the junction.</description>
+    <thingClass>FactoryLogistics.Belts.Building_BeltJunction</thingClass>
+    <graphicData>
+      <texPath>Things/Building/FactoryLogistics/BeltJunction</texPath>
+      <graphicClass>Graphic_Single</graphicClass>
+      <drawSize>(1,1)</drawSize>
+    </graphicData>
+    <uiIconPath>UI/Commands/FactoryLogistics/BeltJunction</uiIconPath>
+    <altitudeLayer>FloorEmplacement</altitudeLayer>
+    <passability>Standable</passability>
+    <size>(1,1)</size>
+    <rotatable>false</rotatable>
+    <tickerType>Normal</tickerType>
+    <canOverlapZones>true</canOverlapZones>
+    <clearBuildingArea>false</clearBuildingArea>
+    <statBases>
+      <MaxHitPoints>120</MaxHitPoints>
+      <WorkToBuild>1400</WorkToBuild>
+      <Mass>15</Mass>
+      <Flammability>0.5</Flammability>
+    </statBases>
+    <costList>
+      <Steel>50</Steel>
+      <ComponentIndustrial>1</ComponentIndustrial>
+    </costList>
+    <building>
+      <isEdifice>false</isEdifice>
+      <relatedBuildCommands>
+        <li>VFEFactory_Conveyor</li>
+        <li>FL_ConveyorArm</li>
+      </relatedBuildCommands>
+    </building>
+    <comps>
+      <li Class="CompProperties_Power">
+        <compClass>CompPowerTrader</compClass>
+        <basePowerConsumption>50</basePowerConsumption>
+      </li>
+      <li Class="CompProperties_Flickable" />
+    </comps>
+    <designationCategory>VFEFactory_Factories</designationCategory>
+    <researchPrerequisites>
+      <li>VFE_BasicFactories</li>
+    </researchPrerequisites>
+    <constructEffect>ConstructMetal</constructEffect>
+  </ThingDef>
+
 </Defs>
