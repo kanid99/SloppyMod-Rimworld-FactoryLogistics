@@ -15,6 +15,7 @@ namespace FactoryLogistics.Belts
         public CompAdvancedResourceProcessor machine;
         public readonly HashSet<Building_Conveyor> belts = new HashSet<Building_Conveyor>();
         public readonly List<Building_LogisticsArm> loaders = new List<Building_LogisticsArm>();
+        public readonly HashSet<Building_ConveyorLift> lifts = new HashSet<Building_ConveyorLift>();
 
         // Set when an earlier Feeder already owns these belts: one Feeder per network.
         public Building_LogisticsArm pausedBy;
@@ -139,12 +140,21 @@ namespace FactoryLogistics.Belts
             // Oldest Feeder first, so the one that keeps a contested belt is always the same one.
             feeders.SortBy(a => a.thingIDNumber);
 
+            List<Building_ConveyorLift> allLifts = new List<Building_ConveyorLift>();
+            List<Thing> buildings = map.listerThings.ThingsInGroup(ThingRequestGroup.BuildingArtificial);
+            for (int i = 0; i < buildings.Count; i++)
+            {
+                Building_ConveyorLift lift = buildings[i] as Building_ConveyorLift;
+                if (lift != null)
+                    allLifts.Add(lift);
+            }
+
             Dictionary<Building_Conveyor, LogisticsNetwork> claimed = new Dictionary<Building_Conveyor, LogisticsNetwork>();
             foreach (Building_LogisticsArm feeder in feeders)
             {
                 LogisticsNetwork network = new LogisticsNetwork();
                 network.feeder = feeder;
-                CollectBelts(feeder, network.belts);
+                CollectBelts(feeder, network, allLifts);
 
                 LogisticsNetwork owner = null;
                 foreach (Building_Conveyor belt in network.belts)
@@ -161,6 +171,7 @@ namespace FactoryLogistics.Belts
                 {
                     network.pausedBy = owner.feeder;
                     network.belts.Clear();
+                    network.lifts.Clear();
                 }
                 else
                 {
@@ -187,9 +198,12 @@ namespace FactoryLogistics.Belts
 
         // Every conveyor that leads to the Feeder: start at the belt whose end points at it and
         // walk back up every belt that feeds into one already found. Merges are followed, and so
-        // are underground conveyors: an exit leads back to the entrance it is linked to.
-        private void CollectBelts(Building_LogisticsArm feeder, HashSet<Building_Conveyor> belts)
+        // are underground conveyors (an exit leads back to the entrance it is linked to) and lifts
+        // (a lift putting onto a belt leads back to every lift sending to it, and the belts that
+        // drop onto those).
+        private void CollectBelts(Building_LogisticsArm feeder, LogisticsNetwork network, List<Building_ConveyorLift> allLifts)
         {
+            HashSet<Building_Conveyor> belts = network.belts;
             Building_Conveyor last = feeder.BackConveyor;
             if (last == null || last.ForwardCell != feeder.Position)
                 return;
@@ -212,18 +226,37 @@ namespace FactoryLogistics.Belts
 
                 for (int i = 0; i < 4; i++)
                 {
-                    Building_Conveyor upstream = ConveyorAt(belt.Position + GenAdj.CardinalDirections[i], map);
-                    if (upstream == null || belts.Contains(upstream))
-                        continue;
-
-                    // An entrance's forward cell is not where its items come out.
-                    if (upstream is Building_UndergroundConveyorEntrance)
-                        continue;
-
-                    if (upstream.ForwardCell == belt.Position)
+                    IntVec3 cell = belt.Position + GenAdj.CardinalDirections[i];
+                    Building_Conveyor upstream = ConveyorAt(cell, map);
+                    if (upstream != null && !belts.Contains(upstream)
+                        && !(upstream is Building_UndergroundConveyorEntrance)   // its forward cell is not where items come out
+                        && upstream.ForwardCell == belt.Position)
                     {
                         belts.Add(upstream);
                         open.Enqueue(upstream);
+                    }
+                }
+
+                // A lift beside this belt that puts onto it.
+                for (int i = 0; i < allLifts.Count; i++)
+                {
+                    Building_ConveyorLift output = allLifts[i];
+                    if (!output.Spawned || output.FrontCell != belt.Position)
+                        continue;
+                    for (int j = 0; j < allLifts.Count; j++)
+                    {
+                        Building_ConveyorLift input = allLifts[j];
+                        if (input == output || input.Partner != output || !network.lifts.Add(input))
+                            continue;
+                        for (int k = 0; k < 4; k++)
+                        {
+                            Building_Conveyor feeding = ConveyorAt(input.Position + GenAdj.CardinalDirections[k], map);
+                            if (feeding != null && !belts.Contains(feeding) && feeding.ForwardCell == input.Position)
+                            {
+                                belts.Add(feeding);
+                                open.Enqueue(feeding);
+                            }
+                        }
                     }
                 }
             }
@@ -353,6 +386,8 @@ namespace FactoryLogistics.Belts
         private int CountInFlight(LogisticsNetwork network, Need need)
         {
             int count = CountOn(network.feeder.Position, need) + CountOn(network.feeder.FrontCell, need);
+            foreach (Building_ConveyorLift lift in network.lifts)
+                count += CountOn(lift.Position, need);
             foreach (Building_Conveyor belt in network.belts)
             {
                 count += CountIn(belt, need);

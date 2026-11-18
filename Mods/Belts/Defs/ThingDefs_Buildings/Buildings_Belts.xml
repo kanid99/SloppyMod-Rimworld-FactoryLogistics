@@ -57,4 +57,62 @@
     <constructEffect>ConstructMetal</constructEffect>
   </ThingDef>
 
+  <!--
+    The conveyor lift: a belt drops items onto it and its partner puts them onto the belt in
+    front of the partner. With As above, So below it pairs by itself with the lift on the same
+    spot a level up or down; otherwise (or to override) it is linked by hand.
+  -->
+  <ThingDef ParentName="BuildingBase">
+    <defName>FL_ConveyorLift</defName>
+    <label>conveyor lift</label>
+    <description>Carries belt items between two lifts. Point a conveyor belt at a lift and it drops its items onto it; the lift's partner puts them onto the conveyor in front of the partner, one about every second. Lifts work both ways and their facing is the side they put out on.
+
+With "As above, So below" installed, a lift pairs by itself with a lift built on the same spot one level up (or, if there is none, one level down) - a conveyor elevator. Any two lifts can also be linked by hand, which overrides that and works as a long-distance belt link without that mod.
+
+Conveyor arm networks follow belts through lifts, so a Loader on one level can serve a Feeder on another.</description>
+    <thingClass>FactoryLogistics.Belts.Building_ConveyorLift</thingClass>
+    <graphicData>
+      <texPath>Things/Building/FactoryLogistics/ConveyorLift</texPath>
+      <graphicClass>Graphic_Multi</graphicClass>
+      <drawSize>(1,1)</drawSize>
+    </graphicData>
+    <uiIconPath>UI/Commands/FactoryLogistics/ConveyorLift</uiIconPath>
+    <altitudeLayer>FloorEmplacement</altitudeLayer>
+    <passability>Standable</passability>
+    <size>(1,1)</size>
+    <rotatable>true</rotatable>
+    <tickerType>Normal</tickerType>
+    <canOverlapZones>true</canOverlapZones>
+    <clearBuildingArea>false</clearBuildingArea>
+    <statBases>
+      <MaxHitPoints>150</MaxHitPoints>
+      <WorkToBuild>1800</WorkToBuild>
+      <Mass>20</Mass>
+      <Flammability>0.5</Flammability>
+    </statBases>
+    <costList>
+      <Steel>60</Steel>
+      <ComponentIndustrial>2</ComponentIndustrial>
+    </costList>
+    <building>
+      <isEdifice>false</isEdifice>
+      <relatedBuildCommands>
+        <li>VFEFactory_Conveyor</li>
+        <li>FL_ConveyorArm</li>
+      </relatedBuildCommands>
+    </building>
+    <comps>
+      <li Class="CompProperties_Power">
+        <compClass>CompPowerTrader</compClass>
+        <basePowerConsumption>100</basePowerConsumption>
+      </li>
+      <li Class="CompProperties_Flickable" />
+    </comps>
+    <designationCategory>VFEFactory_Factories</designationCategory>
+    <researchPrerequisites>
+      <li>VFE_BasicFactories</li>
+    </researchPrerequisites>
+    <constructEffect>ConstructMetal</constructEffect>
+  </ThingDef>
+
 </Defs>

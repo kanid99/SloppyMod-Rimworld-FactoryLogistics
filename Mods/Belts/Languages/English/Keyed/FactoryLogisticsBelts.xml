@@ -19,4 +19,16 @@
   <FactoryLogistics.Feeding>Feeding the {0} from {1} loader(s).</FactoryLogistics.Feeding>
   <FactoryLogistics.Serving>Loading for the {0}.</FactoryLogistics.Serving>
   <FactoryLogistics.CallingFor>Calling for: {0}</FactoryLogistics.CallingFor>
+  <FactoryLogistics.LiftNoPartner>No partner lift. Build one on the same spot a level up or down, or link one by hand.</FactoryLogistics.LiftNoPartner>
+  <FactoryLogistics.LiftPartnerNoBelt>No conveyor in front of the partner lift.</FactoryLogistics.LiftPartnerNoBelt>
+  <FactoryLogistics.LiftWaiting>Waiting for room on the partner's belt.</FactoryLogistics.LiftWaiting>
+  <FactoryLogistics.LiftCarried>Carried {0}.</FactoryLogistics.LiftCarried>
+  <FactoryLogistics.LiftPartner>Partner: {0}</FactoryLogistics.LiftPartner>
+  <FactoryLogistics.LiftLinkedByHand>linked by hand</FactoryLogistics.LiftLinkedByHand>
+  <FactoryLogistics.LiftAbove>the lift a level up</FactoryLogistics.LiftAbove>
+  <FactoryLogistics.LiftBelow>the lift a level down</FactoryLogistics.LiftBelow>
+  <FactoryLogistics.LiftLink>Link to lift</FactoryLogistics.LiftLink>
+  <FactoryLogistics.LiftLinkDesc>Choose another conveyor lift for this one to send to. A link made by hand overrides the automatic pairing between levels.</FactoryLogistics.LiftLinkDesc>
+  <FactoryLogistics.LiftUnlink>Clear link</FactoryLogistics.LiftUnlink>
+  <FactoryLogistics.LiftUnlinkDesc>Remove the hand-made link and go back to pairing with the lift a level up or down.</FactoryLogistics.LiftUnlinkDesc>
 </LanguageData>

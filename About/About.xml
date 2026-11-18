@@ -3,7 +3,7 @@
   <name>SloppyMods Factory Logistics</name>
   <author>SloppyMod</author>
   <packageId>sloppymod.factorylogistics</packageId>
-  <modVersion>0.9.7</modVersion>
+  <modVersion>0.9.8</modVersion>
   <!-- 1.6 and 1.7 (1.7 runs the 1.6 assembly unchanged), not earlier, for the same reason as the
        other SloppyMods mods: the assembly is built against 1.6 signatures (Thing.Tick is protected
        there and was public in 1.4/1.5), so it cannot load on earlier versions. -->
@@ -11,7 +11,7 @@
     <li>1.6</li>
     <li>1.7</li>
   </supportedVersions>
-  <description>Build 0.9.7
+  <description>Build 0.9.8
 
 Moving goods around a colony without hauling them by hand.
 
@@ -33,7 +33,9 @@ The compressor idles while the air tanks are full and runs flat out to refill th
 [Conveyor arms] (with Vanilla Furniture Expanded - Factory)
 A conveyor arm works a VFE Factory belt line, and a button switches it between two jobs. As a Loader it stands with storage behind it and a conveyor in front, and puts goods onto the belt. As a Feeder it stands at the end of the belt, in front of a factory machine's input hopper, and puts what arrives into the machine.
 
-Together they form a network: the Feeder reads what the machine's current process still needs, and every Loader on the belts leading to it sends exactly that - never more than is missing, counting what is already on its way. Belts can merge and run through underground conveyors. Anything that reaches the Feeder and is no longer wanted is set down beside it, so the line never jams. Without VFE Factory, this part simply does not load.
+Together they form a network: the Feeder reads what the machine's current process still needs, and every Loader on the belts leading to it sends exactly that - never more than is missing, counting what is already on its way. Belts can merge and run through underground conveyors. Anything that reaches the Feeder and is no longer wanted is set down beside it, so the line never jams.
+
+A conveyor lift carries belt items to a partner lift, which puts them onto its own belt. With "As above, So below" a lift pairs by itself with the lift on the same spot a level up or down - a conveyor elevator - and arm networks follow belts between levels. Lifts can also be linked by hand over any distance. Without VFE Factory, this part simply does not load.
 
 [Vehicle tube dock] (with Vehicle Framework)
 A pad on the tube network that vehicles park over. Loading, it is a tube receiver whose room is the parked vehicle's free cargo weight: what senders fire at it goes straight into the cargo, and anything sent while nothing is parked waits on the pad for the next vehicle. Unloading, it sends the vehicle's cargo out a capsule at a time to a receiver you choose, with a filter for what to take off. It never touches passengers or a vehicle being packed for a caravan. Works with every vehicle mod built on Vehicle Framework, such as Vanilla Vehicles Expanded.

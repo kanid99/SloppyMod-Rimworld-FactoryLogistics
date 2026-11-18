@@ -76,6 +76,60 @@ def arm(accent, accent_dark):
     return finish(image, CELL, CELL)
 
 
+def lift():
+    """The conveyor lift facing north: a square shaft with a platform, up and down marks on
+    the sides, and an output lip on the front edge (top)."""
+    image, draw = new_canvas(CELL, CELL)
+    c = CELL / 2
+    rect(draw, (12, 12, CELL - 12, CELL - 12), fill=OUTLINE, radius=10)
+    rect(draw, (16, 16, CELL - 16, CELL - 16), fill=CASE_DARK, radius=8)
+    rect(draw, (16, 16, CELL - 16, CELL - 24), fill=CASE, radius=8)
+    # The shaft opening and its platform.
+    rect(draw, (32, 32, CELL - 32, CELL - 32), fill=OUTLINE, radius=4)
+    rect(draw, (35, 35, CELL - 35, CELL - 35), fill=HOLE, radius=3)
+    rect(draw, (40, 44, CELL - 40, CELL - 40), fill=PLATE, radius=3)
+    for y in range(50, CELL - 44, 9):
+        line(draw, [(44, y), (CELL - 44, y)], CASE_DARK, 2)
+    # Up on the left, down on the right.
+    polygon(draw, [(22, 56), (28, 46), (34, 56)], fill=TEAL)
+    polygon(draw, [(22, 66), (28, 56), (34, 66)], fill=TEAL_DARK)
+    polygon(draw, [(CELL - 34, 62), (CELL - 28, 72), (CELL - 22, 62)], fill=AMBER)
+    polygon(draw, [(CELL - 34, 72), (CELL - 28, 82), (CELL - 22, 72)], fill=AMBER_DARK)
+    return finish(image, CELL, CELL)
+
+
+def lift_lip():
+    """The output lip on the front edge (top), on its own layer so it alone turns with the
+    lift: the up and down marks stay upright whichever way the lift faces."""
+    image, draw = new_canvas(CELL, CELL)
+    rect(draw, (40, 6, CELL - 40, 24), fill=OUTLINE, radius=4)
+    rect(draw, (43, 9, CELL - 43, 21), fill=CASE_LIT, radius=3)
+    chevron_up(draw, CELL / 2, 15, 7, OUTLINE)
+    return finish(image, CELL, CELL)
+
+
+def save_lift(name):
+    os.makedirs(BUILDING, exist_ok=True)
+    body, lip = lift(), lift_lip()
+    for suffix, angle in (("north", 0), ("east", -90), ("south", 180)):
+        image = body.copy()
+        image.alpha_composite(lip.rotate(angle, resample=Image.BICUBIC))
+        path = os.path.join(BUILDING, "%s_%s.png" % (name, suffix))
+        image.save(path)
+        print("wrote", path)
+        if suffix == "north":
+            save_icon(image, name)
+
+
+def icon_link():
+    image, draw = new_canvas(64, 64)
+    for x0, color, dark in ((8, TEAL, TEAL_DARK), (30, AMBER, AMBER_DARK)):
+        rect(draw, (x0, 18, x0 + 26, 46), fill=OUTLINE, radius=12)
+        rect(draw, (x0 + 4, 22, x0 + 22, 42), fill=color, radius=9)
+        rect(draw, (x0 + 9, 27, x0 + 17, 37), fill=OUTLINE, radius=4)
+    return finish(image, 64, 64)
+
+
 def save_multi(image, name):
     os.makedirs(BUILDING, exist_ok=True)
     # North as drawn; east is the north sprite turned a quarter clockwise; south half a turn.
@@ -100,6 +154,8 @@ def main():
     save_multi(feeder, "ArmFeeder")
     save_icon(loader, "ArmLoader")
     save_icon(feeder, "ArmFeeder")
+    save_lift("ConveyorLift")
+    save_icon(icon_link(), "LiftLink")
 
 
 if __name__ == "__main__":
