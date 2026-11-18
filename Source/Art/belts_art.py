@@ -27,6 +27,12 @@ def chevron_up(draw, cx, cy, size, fill):
             fill=fill)
 
 
+def chevron_down(draw, cx, cy, size, fill):
+    polygon(draw, [(cx - size, cy - size * 0.5), (cx, cy + size * 0.6), (cx + size, cy - size * 0.5),
+                   (cx + size, cy - size * 0.95), (cx, cy + size * 0.15), (cx - size, cy - size * 0.95)],
+            fill=fill)
+
+
 def arm(accent, accent_dark):
     """The arm facing north: a tray at the back (bottom), a turret, and a jointed arm reaching to
     the front edge (top) with an open gripper."""
@@ -41,10 +47,11 @@ def arm(accent, accent_dark):
         disc(draw, x, y, 4, fill=OUTLINE)
         disc(draw, x, y - 0.5, 2.5, fill=CASE_LIT)
 
-    # Intake tray on the back edge, where it takes from.
+    # Output tray on the back edge, where it puts down; the chevron points out of it, away from
+    # the gripper, which reaches into the cell it takes from.
     rect(draw, (36, CELL - 30, CELL - 36, CELL - 8), fill=OUTLINE, radius=5)
     rect(draw, (39, CELL - 27, CELL - 39, CELL - 11), fill=HOLE, radius=4)
-    chevron_up(draw, c, CELL - 19, 8, accent)
+    chevron_down(draw, c, CELL - 19, 8, accent)
 
     # Turret.
     disc(draw, c, c + 14, 22, fill=OUTLINE)

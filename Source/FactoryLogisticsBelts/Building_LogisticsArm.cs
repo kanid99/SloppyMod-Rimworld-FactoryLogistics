@@ -9,12 +9,14 @@ namespace FactoryLogistics.Belts
 {
     public enum ArmMode : byte
     {
-        Loader,     // storage behind it -> belt in front
-        Feeder,     // end of a belt behind it -> machine input in front
+        Loader,     // storage at its gripper -> belt behind it
+        Feeder,     // end of a belt at its gripper -> machine input behind it
     }
 
-    // One building, two jobs, chosen with a gizmo. It always works from the cell behind it to the
-    // cell in front of it, so its rotation is its direction.
+    // One building, two jobs, chosen with a gizmo. Its gripper reaches into the cell it takes
+    // from (the cell it faces) and it puts down on the cell behind it, so its rotation is its
+    // direction. (Build 0.9.9 and earlier had it the other way round; players point the gripper
+    // at what it grabs, so that is how it works now.)
     //
     // It is deliberately not an edifice and not a storage building, which is what lets it sit on
     // both ends of a VFE Factory belt with no patch to VFE:
@@ -47,14 +49,16 @@ namespace FactoryLogistics.Belts
             get { return priority; }
         }
 
-        public IntVec3 BackCell
-        {
-            get { return Position - Rotation.FacingCell; }
-        }
-
-        public IntVec3 FrontCell
+        /// <summary>Where it takes from: the cell its gripper faces.</summary>
+        public IntVec3 SourceCell
         {
             get { return Position + Rotation.FacingCell; }
+        }
+
+        /// <summary>Where it puts down: the cell behind it.</summary>
+        public IntVec3 OutputCell
+        {
+            get { return Position - Rotation.FacingCell; }
         }
 
         public bool PowerOn
@@ -150,15 +154,15 @@ namespace FactoryLogistics.Belts
                 manager.WorkFeeder(this);
         }
 
-        // What a Loader draws from: the whole storage the cell behind it belongs to - a stockpile
+        // What a Loader draws from: the whole storage its gripper cell belongs to - a stockpile
         // zone or a storage building - or, if that cell is not storage, whatever lies on it.
         public IEnumerable<Thing> SourceThings()
         {
             Map map = Map;
-            if (map == null || !BackCell.InBounds(map))
+            if (map == null || !SourceCell.InBounds(map))
                 yield break;
 
-            SlotGroup group = BackCell.GetSlotGroup(map);
+            SlotGroup group = SourceCell.GetSlotGroup(map);
             if (group != null)
             {
                 foreach (Thing thing in group.HeldThings)
@@ -167,7 +171,7 @@ namespace FactoryLogistics.Belts
                 yield break;
             }
 
-            List<Thing> things = BackCell.GetThingList(map);
+            List<Thing> things = SourceCell.GetThingList(map);
             for (int i = things.Count - 1; i >= 0; i--)
             {
                 if (things[i].def.category == ThingCategory.Item)
@@ -175,15 +179,10 @@ namespace FactoryLogistics.Belts
             }
         }
 
-        // The conveyor a Loader puts onto, or the one whose end a Feeder sits on.
-        public Building_Conveyor FrontConveyor
+        // The conveyor a Loader puts onto, or a Feeder's machine input conveyor.
+        public Building_Conveyor OutputConveyor
         {
-            get { return Spawned ? LogisticsManager.ConveyorAt(FrontCell, Map) : null; }
-        }
-
-        public Building_Conveyor BackConveyor
-        {
-            get { return Spawned ? LogisticsManager.ConveyorAt(BackCell, Map) : null; }
+            get { return Spawned ? LogisticsManager.ConveyorAt(OutputCell, Map) : null; }
         }
 
         // ------------------------------------------------------------------ UI
@@ -240,8 +239,8 @@ namespace FactoryLogistics.Belts
             base.DrawExtraSelectionOverlays();
 
             // Where it takes from and where it puts, so its direction is never a guess.
-            GenDraw.DrawFieldEdges(new List<IntVec3> { BackCell }, Color.cyan);
-            GenDraw.DrawFieldEdges(new List<IntVec3> { FrontCell }, new Color(1f, 0.6f, 0.2f));
+            GenDraw.DrawFieldEdges(new List<IntVec3> { SourceCell }, Color.cyan);
+            GenDraw.DrawFieldEdges(new List<IntVec3> { OutputCell }, new Color(1f, 0.6f, 0.2f));
 
             LogisticsManager manager = Spawned ? LogisticsManager.For(Map) : null;
             Thing machine = manager != null ? manager.MachineFor(this) : null;

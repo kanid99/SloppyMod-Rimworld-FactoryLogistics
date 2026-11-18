@@ -22,7 +22,7 @@ namespace FactoryLogistics.Belts
     public class LogisticsNetwork : BeltRun
     {
         public Building_LogisticsArm feeder;
-        public CompAdvancedResourceProcessor machine;
+        public Consumer consumer;
         public Building_BeltJunction junction;
 
         // Set when an earlier Feeder already owns these belts: one Feeder per run of belts.
@@ -36,6 +36,60 @@ namespace FactoryLogistics.Belts
         public readonly List<LogisticsNetwork> branches = new List<LogisticsNetwork>();
     }
 
+    // What a Feeder feeds, behind it. Three kinds, tried in this order:
+    //   - a VFE Factory machine with an input slot on that cell: it asks for exactly what its
+    //     current process still lacks;
+    //   - any building that offers the small logistics hook below (the SloppyMods repair centre
+    //     does): it says which items it would take and how many it wants queued;
+    //   - storage on that cell (a hopper, a shelf, a stockpile): it takes whatever its storage
+    //     settings allow, while it has room.
+    //
+    // The hook is found by name, so no mod has to reference this one:
+    //   IntVec3 LogisticsInputCell { get; }   the cell items are delivered to
+    //   bool LogisticsAccepts(Thing thing)    would it take this item now
+    //   int LogisticsCapacity { get; }        how many items it wants waiting on that cell
+    public class Consumer
+    {
+        public Thing thing;
+        public CompAdvancedResourceProcessor vfe;
+        public SlotGroup storage;
+        public MethodInfo acceptsMethod;
+        public PropertyInfo capacityProp;
+
+        public bool Accepts(Thing item)
+        {
+            if (acceptsMethod != null)
+            {
+                object result = acceptsMethod.Invoke(thing, new object[] { item });
+                return result is bool && (bool)result;
+            }
+            if (storage != null)
+                return storage.parent.Accepts(item);
+            return false;
+        }
+
+        public int Capacity
+        {
+            get
+            {
+                if (capacityProp != null)
+                {
+                    object value = capacityProp.GetValue(thing, null);
+                    return value is int ? (int)value : 1;
+                }
+                if (storage != null)
+                {
+                    int perCell = 1;
+                    Building_Storage building = storage.parent as Building_Storage;
+                    if (building != null)
+                        perCell = UnityEngine.Mathf.Max(1, building.def.building.maxItemsInCell);
+                    return storage.CellsList.Count * perCell;
+                }
+                return 1;
+            }
+        }
+    }
+
     // What a machine still needs of one ingredient: a specific item, or anything in a category
     // ("any stone chunk").
     public struct Need
@@ -44,6 +98,26 @@ namespace FactoryLogistics.Belts
         public ThingCategoryDef category;
         public List<ThingDef> disallowed;
         public int count;
+
+        // For consumers that judge each item (the repair centre: "gear my filters would take"),
+        // a test on the thing itself; counts are then in stacks, not units.
+        public System.Predicate<Thing> accepts;
+        public bool stacks;
+        public string label;
+
+        public bool MatchesThing(Thing t)
+        {
+            if (t == null)
+                return false;
+            if (accepts != null)
+                return accepts(t);
+            return Matches(t.def);
+        }
+
+        public int Units(Thing t)
+        {
+            return stacks ? 1 : t.stackCount;
+        }
 
         public bool Matches(ThingDef def)
         {
@@ -60,6 +134,8 @@ namespace FactoryLogistics.Belts
         {
             get
             {
+                if (label != null)
+                    return label;
                 if (thing != null)
                     return thing.label;
                 return category != null ? category.label : "?";
@@ -195,7 +271,7 @@ namespace FactoryLogistics.Belts
                     network.junction = JunctionFeeding(network, junctions);
                 }
 
-                network.machine = FindMachine(feeder);
+                network.consumer = FindConsumer(feeder);
                 networks.Add(network);
                 byArm[feeder] = network;
             }
@@ -227,7 +303,7 @@ namespace FactoryLogistics.Belts
 
             foreach (Building_LogisticsArm loader in loaders)
             {
-                Building_Conveyor belt = loader.FrontConveyor;
+                Building_Conveyor belt = loader.OutputConveyor;
                 BeltRun run;
                 if (belt != null && claimed.TryGetValue(belt, out run))
                 {
@@ -318,12 +394,16 @@ namespace FactoryLogistics.Belts
             }
         }
 
-        // The VFE Factory machine with an input slot on the cell in front of the Feeder - the same
-        // slot a factory hopper (or a conveyor, which VFE also counts as one) sits on.
-        private CompAdvancedResourceProcessor FindMachine(Building_LogisticsArm feeder)
+        private static readonly Dictionary<System.Type, MethodInfo[]> HookCache = new Dictionary<System.Type, MethodInfo[]>();
+
+        // Whatever the Feeder feeds, behind it: see Consumer.
+        private Consumer FindConsumer(Building_LogisticsArm feeder)
         {
-            IntVec3 slot = feeder.FrontCell;
+            IntVec3 slot = feeder.OutputCell;
+            if (!slot.InBounds(map))
+                return null;
             HashSet<Thing> seen = new HashSet<Thing>();
+            Consumer hooked = null;
 
             foreach (IntVec3 cell in GenRadial.RadialCellsAround(slot, MachineSearchRadius, true))
             {
@@ -335,26 +415,94 @@ namespace FactoryLogistics.Belts
                     continue;
 
                 CompAdvancedResourceProcessor processor = building.TryGetComp<CompAdvancedResourceProcessor>();
-                if (processor == null || processor.Props == null || processor.Props.processes == null)
-                    continue;
-
-                foreach (ProcessDef process in processor.Props.processes)
+                if (processor != null && processor.Props != null && processor.Props.processes != null)
                 {
-                    if (process == null || process.autoInputSlots == null)
-                        continue;
-
-                    foreach (IntVec3 offset in process.autoInputSlots)
+                    foreach (ProcessDef process in processor.Props.processes)
                     {
-                        if (building.Position + offset.RotatedBy(building.Rotation) == slot)
-                            return processor;
+                        if (process == null || process.autoInputSlots == null)
+                            continue;
+
+                        foreach (IntVec3 offset in process.autoInputSlots)
+                        {
+                            if (building.Position + offset.RotatedBy(building.Rotation) == slot)
+                            {
+                                Consumer vfe = new Consumer();
+                                vfe.thing = building;
+                                vfe.vfe = processor;
+                                return vfe;
+                            }
+                        }
                     }
                 }
+
+                if (hooked == null)
+                    hooked = Hooked(building, slot);
             }
 
+            if (hooked != null)
+                return hooked;
+
+            SlotGroup group = slot.GetSlotGroup(map);
+            if (group != null)
+            {
+                Consumer storage = new Consumer();
+                storage.storage = group;
+                Thing parent = group.parent as Thing;
+                storage.thing = parent ?? (Thing)feeder;
+                return storage;
+            }
             return null;
         }
 
+        private static Consumer Hooked(Building building, IntVec3 slot)
+        {
+            System.Type type = building.GetType();
+            MethodInfo[] hook;
+            if (!HookCache.TryGetValue(type, out hook))
+            {
+                BindingFlags flags = BindingFlags.Instance | BindingFlags.Public;
+                PropertyInfo cellProp = type.GetProperty("LogisticsInputCell", flags);
+                MethodInfo accepts = type.GetMethod("LogisticsAccepts", flags, null, new[] { typeof(Thing) }, null);
+                PropertyInfo capacity = type.GetProperty("LogisticsCapacity", flags);
+                hook = cellProp != null && accepts != null && cellProp.PropertyType == typeof(IntVec3)
+                    ? new[] { cellProp.GetGetMethod(), accepts, capacity != null ? capacity.GetGetMethod() : null }
+                    : null;
+                HookCache[type] = hook;
+            }
+            if (hook == null)
+                return null;
+
+            IntVec3 input = (IntVec3)hook[0].Invoke(building, null);
+            if (input != slot)
+                return null;
+
+            Consumer consumer = new Consumer();
+            consumer.thing = building;
+            consumer.acceptsMethod = hook[1];
+            consumer.capacityProp = hook[2] != null ? type.GetProperty("LogisticsCapacity", BindingFlags.Instance | BindingFlags.Public) : null;
+            return consumer;
+        }
+
         // ------------------------------------------------------------------ demand
+
+        // What a consumer still wants, before counting what is on its way.
+        public static List<Need> NeedsOf(Consumer consumer)
+        {
+            if (consumer == null)
+                return new List<Need>();
+            if (consumer.vfe != null)
+                return NeedsOf(consumer.vfe);
+
+            Need need = new Need();
+            need.accepts = consumer.Accepts;
+            need.stacks = true;
+            need.count = consumer.Capacity;
+            need.label = "FactoryLogistics.NeedAccepted".Translate(consumer.thing.LabelShort);
+            List<Need> needs = new List<Need>();
+            if (need.count > 0)
+                needs.Add(need);
+            return needs;
+        }
 
         // What the machine's current process still lacks. Pipe-net ingredients (fuel, chemfuel
         // through pipes) are not belt cargo and are left out.
@@ -409,8 +557,8 @@ namespace FactoryLogistics.Belts
             for (int i = 0; i < things.Count; i++)
             {
                 Thing thing = things[i];
-                if (thing.def.category == ThingCategory.Item && need.Matches(thing.def))
-                    count += thing.stackCount;
+                if (thing.def.category == ThingCategory.Item && need.MatchesThing(thing))
+                    count += need.Units(thing);
             }
             return count;
         }
@@ -433,8 +581,8 @@ namespace FactoryLogistics.Belts
 
             foreach (Thing thing in belt.innerContainer)
             {
-                if (need.Matches(thing.def))
-                    count += thing.stackCount;
+                if (need.MatchesThing(thing))
+                    count += need.Units(thing);
             }
 
             return count;
@@ -455,16 +603,16 @@ namespace FactoryLogistics.Belts
         // Feeder, or in the machine's input slot.
         private int CountInFlight(LogisticsNetwork network, Need need)
         {
-            return CountOnRun(network, need) + CountOn(network.feeder.Position, need) + CountOn(network.feeder.FrontCell, need);
+            return CountOnRun(network, need) + CountOn(network.feeder.Position, need) + CountOn(network.feeder.OutputCell, need);
         }
 
         // What a Feeder's machine still lacks once everything already on its way is counted.
         private List<Need> Outstanding(LogisticsNetwork network)
         {
             List<Need> result = new List<Need>();
-            if (network.machine == null || network.pausedBy != null)
+            if (network.consumer == null || network.pausedBy != null)
                 return result;
-            foreach (Need need in NeedsOf(network.machine))
+            foreach (Need need in NeedsOf(network.consumer))
             {
                 Need left = need;
                 left.count = need.count - CountInFlight(network, need);
@@ -508,8 +656,10 @@ namespace FactoryLogistics.Belts
                     if (need.count <= 0)
                         break;
                     int have = left[thing];
-                    if (have <= 0 || !need.Matches(thing.def))
+                    if (have <= 0 || !need.MatchesThing(thing))
                         continue;
+                    if (need.stacks)
+                        have = 1;
                     int used = UnityEngine.Mathf.Min(have, need.count);
                     left[thing] = have - used;
                     need.count -= used;
@@ -541,7 +691,7 @@ namespace FactoryLogistics.Belts
             BeltRun run;
             if (!byArm.TryGetValue(loader, out run))
             {
-                loader.status = loader.FrontConveyor == null
+                loader.status = loader.OutputConveyor == null
                     ? "FactoryLogistics.LoaderNoBelt".Translate().ToString()
                     : "FactoryLogistics.LoaderNoFeeder".Translate().ToString();
                 return;
@@ -549,7 +699,7 @@ namespace FactoryLogistics.Belts
 
             LogisticsNetwork network = run as LogisticsNetwork;
             JunctionGroup group = run as JunctionGroup;
-            if (network != null && network.machine == null)
+            if (network != null && network.consumer == null)
             {
                 loader.status = "FactoryLogistics.NoMachine".Translate();
                 return;
@@ -560,7 +710,7 @@ namespace FactoryLogistics.Belts
                 return;
             }
 
-            Building_Conveyor belt = loader.FrontConveyor;
+            Building_Conveyor belt = loader.OutputConveyor;
             if (belt == null)
                 return;
 
@@ -584,7 +734,7 @@ namespace FactoryLogistics.Belts
                 Thing source = null;
                 foreach (Thing thing in loader.SourceThings())
                 {
-                    if (thing.Spawned && need.Matches(thing.def) && !thing.IsForbidden(Faction.OfPlayer)
+                    if (thing.Spawned && need.MatchesThing(thing) && !thing.IsForbidden(Faction.OfPlayer)
                         && !map.reservationManager.IsReservedByAnyoneOf(thing, Faction.OfPlayer))
                     {
                         source = thing;
@@ -599,7 +749,7 @@ namespace FactoryLogistics.Belts
                     continue;
                 }
 
-                int take = UnityEngine.Mathf.Min(need.count, source.stackCount);
+                int take = need.stacks ? source.stackCount : UnityEngine.Mathf.Min(need.count, source.stackCount);
                 IntVec3 from = source.Position;
                 Thing sent = source.SplitOff(take);
                 if (sent.Spawned)
@@ -612,7 +762,7 @@ namespace FactoryLogistics.Belts
                     return;
                 }
 
-                string to = network != null ? network.machine.parent.LabelShort : group.junction.LabelShort;
+                string to = network != null ? network.consumer.thing.LabelShort : group.junction.LabelShort;
                 loader.status = "FactoryLogistics.LoaderSent".Translate(sent.LabelCap, to);
                 return;
             }
@@ -636,21 +786,21 @@ namespace FactoryLogistics.Belts
             List<Thing> arrived = new List<Thing>();
             AddLoose(feeder.Position, arrived);
 
-            bool hasMachine = network != null && network.machine != null;
+            bool hasMachine = network != null && network.consumer != null;
             if (arrived.Count == 0)
             {
                 feeder.status = hasMachine ? null : "FactoryLogistics.NoMachine".Translate().ToString();
                 return;
             }
 
-            List<Need> needs = hasMachine ? NeedsOf(network.machine) : new List<Need>();
+            List<Need> needs = hasMachine ? NeedsOf(network.consumer) : new List<Need>();
             foreach (Thing thing in arrived)
             {
                 // Still wanted once what is already in the input slot is counted? Into the slot.
                 bool wanted = false;
                 foreach (Need need in needs)
                 {
-                    if (need.Matches(thing.def) && need.count - CountOn(feeder.FrontCell, need) > 0)
+                    if (need.MatchesThing(thing) && need.count - CountOn(feeder.OutputCell, need) > 0)
                     {
                         wanted = true;
                         break;
@@ -669,7 +819,7 @@ namespace FactoryLogistics.Belts
                 // Nothing on this network wants it any more - the process finished or changed, or
                 // it reached the belt some other way. Off the belt it goes, so it never jams.
                 string label = thing.LabelCap;
-                if (DropStray(feeder.Position, feeder.FrontCell, thing))
+                if (DropStray(feeder.Position, feeder.OutputCell, thing))
                     feeder.status = "FactoryLogistics.FeederDropped".Translate(label);
             }
         }
@@ -704,7 +854,7 @@ namespace FactoryLogistics.Belts
                     bool wants = false;
                     foreach (Need need in Outstanding(branch))
                     {
-                        if (need.Matches(thing.def))
+                        if (need.MatchesThing(thing))
                         {
                             wants = true;
                             break;
@@ -724,7 +874,7 @@ namespace FactoryLogistics.Belts
                     {
                         junction.NoteServed(branch.feeder);
                         junction.status = "FactoryLogistics.JunctionRouted".Translate(label,
-                            branch.machine != null ? branch.machine.parent.LabelShort : branch.feeder.LabelShort);
+                            branch.consumer != null ? branch.consumer.thing.LabelShort : branch.feeder.LabelShort);
                     }
                     else
                     {
@@ -760,7 +910,7 @@ namespace FactoryLogistics.Belts
         // Into the conveyor or factory hopper on the machine's input slot.
         private bool TryDeliver(Building_LogisticsArm feeder, Thing thing)
         {
-            Building_Conveyor slotBelt = feeder.FrontConveyor;
+            Building_Conveyor slotBelt = feeder.OutputConveyor;
             if (slotBelt != null)
             {
                 if (!slotBelt.CanAcceptItem(thing) || !slotBelt.HasSpace())
@@ -774,7 +924,7 @@ namespace FactoryLogistics.Belts
 
             IntVec3 at = thing.Position;
             thing.DeSpawn();
-            if (GenPlace.TryPlaceThing(thing, feeder.FrontCell, map, ThingPlaceMode.Direct))
+            if (GenPlace.TryPlaceThing(thing, feeder.OutputCell, map, ThingPlaceMode.Direct))
                 return true;
 
             if (!thing.Destroyed && !thing.Spawned)
@@ -817,7 +967,7 @@ namespace FactoryLogistics.Belts
                 return null;
             LogisticsNetwork network = run as LogisticsNetwork;
             if (network != null)
-                return network.machine != null ? network.machine.parent : null;
+                return network.consumer != null ? network.consumer.thing : null;
             JunctionGroup group = run as JunctionGroup;
             return group != null ? group.junction : null;
         }
@@ -830,7 +980,7 @@ namespace FactoryLogistics.Belts
             if (!byJunction.TryGetValue(junction, out group))
                 return result;
             foreach (LogisticsNetwork branch in group.branches)
-                result.Add(branch.machine != null ? (Thing)branch.machine.parent : branch.feeder);
+                result.Add(branch.consumer != null ? branch.consumer.thing : branch.feeder);
             return result;
         }
 
@@ -862,11 +1012,11 @@ namespace FactoryLogistics.Belts
             if (network.pausedBy != null)
                 return "FactoryLogistics.FeederPaused".Translate(network.pausedBy.LabelShort);
 
-            if (network.machine == null)
+            if (network.consumer == null)
                 return "FactoryLogistics.NoMachine".Translate();
 
-            List<Need> needs = NeedsOf(network.machine);
-            string machine = network.machine.parent.LabelShort;
+            List<Need> needs = NeedsOf(network.consumer);
+            string machine = network.consumer.thing.LabelShort;
             string line;
             if (arm.Mode == ArmMode.Feeder)
             {

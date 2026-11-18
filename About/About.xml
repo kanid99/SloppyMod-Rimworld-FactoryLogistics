@@ -3,7 +3,7 @@
   <name>SloppyMods Factory Logistics</name>
   <author>SloppyMod</author>
   <packageId>sloppymod.factorylogistics</packageId>
-  <modVersion>0.9.9</modVersion>
+  <modVersion>0.9.10</modVersion>
   <!-- 1.6 and 1.7 (1.7 runs the 1.6 assembly unchanged), not earlier, for the same reason as the
        other SloppyMods mods: the assembly is built against 1.6 signatures (Thing.Tick is protected
        there and was public in 1.4/1.5), so it cannot load on earlier versions. -->
@@ -11,7 +11,7 @@
     <li>1.6</li>
     <li>1.7</li>
   </supportedVersions>
-  <description>Build 0.9.9
+  <description>Build 0.9.10
 
 Moving goods around a colony without hauling them by hand.
 
@@ -31,7 +31,7 @@ With "As above, So below" installed, tubes run between levels through its genera
 The compressor idles while the air tanks are full and runs flat out to refill them after every capsule, so a busy network shows up on the power grid. If the compressor loses power or breaks down, the tubes stop until it is back.
 
 [Conveyor arms] (with Vanilla Furniture Expanded - Factory)
-A conveyor arm works a VFE Factory belt line, and a button switches it between two jobs. As a Loader it stands with storage behind it and a conveyor in front, and puts goods onto the belt. As a Feeder it stands at the end of the belt, in front of a factory machine's input hopper, and puts what arrives into the machine.
+A conveyor arm works a VFE Factory belt line: its gripper reaches into the cell it takes from, and it puts down behind it. A button switches it between two jobs. As a Loader its gripper faces storage and it puts goods onto the conveyor behind it. As a Feeder its gripper faces the end of a belt and it puts what arrives into the machine behind it: a VFE factory machine's input, the SloppyMods repair centre, or any storage.
 
 Together they form a network: the Feeder reads what the machine's current process still needs, and every Loader on the belts leading to it sends exactly that - never more than is missing, counting what is already on its way. Belts can merge and run through underground conveyors. Anything that reaches the Feeder and is no longer wanted is set down beside it, so the line never jams.
 

@@ -3,10 +3,11 @@
   <FactoryLogistics.ArmNoPower>No power.</FactoryLogistics.ArmNoPower>
   <FactoryLogistics.Mode_Loader>Loader</FactoryLogistics.Mode_Loader>
   <FactoryLogistics.Mode_Feeder>Feeder</FactoryLogistics.Mode_Feeder>
-  <FactoryLogistics.ModeDesc>Switch this arm's job.\n\nLoader: takes from the storage behind it and puts onto the conveyor in front of it, sending only what the network's machine still needs.\n\nFeeder: stands at the end of a belt and puts what arrives into the machine input (factory hopper or conveyor) in front of it. Anything no longer wanted is set down beside it.</FactoryLogistics.ModeDesc>
-  <FactoryLogistics.LoaderNoBelt>No conveyor in front of it.</FactoryLogistics.LoaderNoBelt>
+  <FactoryLogistics.ModeDesc>Switch this arm's job. Its gripper reaches into the cell it takes from; it puts down on the cell behind it.\n\nLoader: takes from the storage at its gripper and puts onto the conveyor behind it, sending only what the network's machine still needs.\n\nFeeder: gripper towards the end of a belt; puts what arrives into the machine input behind it (factory hopper or conveyor, the repair centre's item spot, or storage). Anything no longer wanted is set down beside it.</FactoryLogistics.ModeDesc>
+  <FactoryLogistics.LoaderNoBelt>No conveyor behind it to put onto. (The gripper faces the storage it takes from.)</FactoryLogistics.LoaderNoBelt>
   <FactoryLogistics.LoaderNoFeeder>Its belt does not lead to a Feeder.</FactoryLogistics.LoaderNoFeeder>
-  <FactoryLogistics.NoMachine>No factory machine takes input from the cell in front of the Feeder.</FactoryLogistics.NoMachine>
+  <FactoryLogistics.NoMachine>Nothing to feed behind the Feeder: no factory machine input, repair centre item spot or storage there. (The gripper faces the belt.)</FactoryLogistics.NoMachine>
+  <FactoryLogistics.NeedAccepted>items the {0} will take</FactoryLogistics.NeedAccepted>
   <FactoryLogistics.LoaderBeltBusy>Waiting for room on the belt.</FactoryLogistics.LoaderBeltBusy>
   <FactoryLogistics.MachineSatisfied>The machine needs nothing right now.</FactoryLogistics.MachineSatisfied>
   <FactoryLogistics.MachineCovered>Everything the machine needs is already on its way.</FactoryLogistics.MachineCovered>
