@@ -3,7 +3,7 @@
   <name>SloppyMods Factory Logistics</name>
   <author>SloppyMod</author>
   <packageId>sloppymod.factorylogistics</packageId>
-  <modVersion>0.9.14</modVersion>
+  <modVersion>0.9.15</modVersion>
   <!-- 1.6 and 1.7 (1.7 runs the 1.6 assembly unchanged), not earlier, for the same reason as the
        other SloppyMods mods: the assembly is built against 1.6 signatures (Thing.Tick is protected
        there and was public in 1.4/1.5), so it cannot load on earlier versions. -->
@@ -11,7 +11,7 @@
     <li>1.6</li>
     <li>1.7</li>
   </supportedVersions>
-  <description>Build 0.9.14
+  <description>Build 0.9.15
 
 Moving goods around a colony without hauling them by hand.
 

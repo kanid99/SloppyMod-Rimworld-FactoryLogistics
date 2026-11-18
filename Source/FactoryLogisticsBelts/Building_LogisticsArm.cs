@@ -26,8 +26,28 @@ namespace FactoryLogistics.Belts
     //     waits while the Feeder still holds one - the belt's own back-pressure.
     // What a Loader sends, and what a Feeder does with what arrives, is decided by the map's
     // LogisticsManager from what the Feeder's machine is asking for.
-    public class Building_LogisticsArm : Building
+    [StaticConstructorOnStartup]
+    public static class ArmTex
     {
+        // The swinging arm, drawn every frame over the floor-mounted base: open while it reaches,
+        // closed while it carries. Pivot at the middle of the texture, pointing up (north).
+        public static readonly Material LoaderOpen = MaterialPool.MatFrom("Things/Building/FactoryLogistics/ArmLoader_Arm", ShaderDatabase.Cutout);
+        public static readonly Material LoaderClosed = MaterialPool.MatFrom("Things/Building/FactoryLogistics/ArmLoader_ArmClosed", ShaderDatabase.Cutout);
+        public static readonly Material FeederOpen = MaterialPool.MatFrom("Things/Building/FactoryLogistics/ArmFeeder_Arm", ShaderDatabase.Cutout);
+        public static readonly Material FeederClosed = MaterialPool.MatFrom("Things/Building/FactoryLogistics/ArmFeeder_ArmClosed", ShaderDatabase.Cutout);
+    }
+
+    public class Building_LogisticsArm : Building, IThingHolder
+    {
+        // The swing: reach into the source cell, close, turn half round to the output cell
+        // carrying the item, set it down, turn back. The item is really in the arm meanwhile (and
+        // counted as on its way), so what you see is what is happening.
+        private enum Swing : byte { Idle, Out, Back }
+
+        private const int HalfSwingTicks = 25;
+        private ThingOwner<Thing> carried;
+        private Swing swing = Swing.Idle;
+        private int swingStart;
         private ArmMode mode = ArmMode.Loader;
         private int priority = 2;
         private const int WorkInterval = 30;
@@ -37,6 +57,47 @@ namespace FactoryLogistics.Belts
 
         private CompPowerTrader power;
         private Graphic feederGraphic;
+
+        public Building_LogisticsArm()
+        {
+            carried = new ThingOwner<Thing>(this, true, LookMode.Deep);
+        }
+
+        public ThingOwner GetDirectlyHeldThings()
+        {
+            return carried;
+        }
+
+        public void GetChildHolders(List<IThingHolder> outChildren)
+        {
+            ThingOwnerUtility.AppendThingHoldersFromThings(outChildren, GetDirectlyHeldThings());
+        }
+
+        /// <summary>Busy with a swing; it takes nothing new until it is back.</summary>
+        public bool Busy
+        {
+            get { return swing != Swing.Idle || carried.Count > 0; }
+        }
+
+        /// <summary>The item in its gripper, if any.</summary>
+        public Thing Carried
+        {
+            get { return carried.Count > 0 ? carried[0] : null; }
+        }
+
+        /// <summary>Takes a despawned item into the gripper and starts the swing to the output side.</summary>
+        public void Pick(Thing thing)
+        {
+            if (thing.Spawned)
+                thing.DeSpawn();
+            if (!carried.TryAdd(thing, true))
+            {
+                GenPlace.TryPlaceThing(thing, Position, Map, ThingPlaceMode.Near);
+                return;
+            }
+            swing = Swing.Out;
+            swingStart = Find.TickManager.TicksGame;
+        }
 
         public ArmMode Mode
         {
@@ -78,6 +139,9 @@ namespace FactoryLogistics.Belts
         public override void DeSpawn(DestroyMode destroyMode = DestroyMode.Vanish)
         {
             Map map = Map;
+            if (carried.Count > 0 && map != null)
+                carried.TryDropAll(Position, map, ThingPlaceMode.Near);
+            swing = Swing.Idle;
             base.DeSpawn(destroyMode);
             LogisticsManager manager = LogisticsManager.For(map);
             if (manager != null)
@@ -89,6 +153,11 @@ namespace FactoryLogistics.Belts
             base.ExposeData();
             Scribe_Values.Look(ref mode, "mode", ArmMode.Loader);
             Scribe_Values.Look(ref priority, "priority", 2);
+            Scribe_Deep.Look(ref carried, "carried", this);
+            Scribe_Values.Look(ref swing, "swing", Swing.Idle);
+            Scribe_Values.Look(ref swingStart, "swingStart", 0);
+            if (Scribe.mode == LoadSaveMode.PostLoadInit && carried == null)
+                carried = new ThingOwner<Thing>(this, true, LookMode.Deep);
         }
 
         // ------------------------------------------------------------------ graphics
@@ -147,6 +216,13 @@ namespace FactoryLogistics.Belts
         protected override void Tick()
         {
             base.Tick();
+            carried.DoTick();
+
+            if (Spawned && swing != Swing.Idle)
+            {
+                TickSwing();
+                return;
+            }
 
             if (!Spawned || !this.IsHashIntervalTick(WorkInterval))
                 return;
@@ -165,6 +241,79 @@ namespace FactoryLogistics.Belts
                 manager.WorkLoader(this);
             else
                 manager.WorkFeeder(this);
+        }
+
+        private void TickSwing()
+        {
+            if (!PowerOn)
+                return;     // frozen mid-swing until power is back
+            int now = Find.TickManager.TicksGame;
+            if (swing == Swing.Out)
+            {
+                if (now - swingStart < HalfSwingTicks)
+                    return;
+                Thing thing = Carried;
+                if (thing != null)
+                {
+                    // At the output side: set it down, or hold it there until there is room.
+                    if (!this.IsHashIntervalTick(10) && now - swingStart > HalfSwingTicks)
+                        return;
+                    LogisticsManager manager = LogisticsManager.For(Map);
+                    carried.Remove(thing);
+                    if (manager == null || !manager.Release(this, thing))
+                    {
+                        if (!thing.Destroyed && !thing.Spawned && thing.holdingOwner == null)
+                            carried.TryAdd(thing, true);
+                        status = "FactoryLogistics.ArmHolding".Translate(thing.LabelShort);
+                        return;
+                    }
+                }
+                swing = Swing.Back;
+                swingStart = now;
+            }
+            else if (swing == Swing.Back && now - swingStart >= HalfSwingTicks)
+            {
+                swing = Swing.Idle;
+            }
+        }
+
+        // How far round the arm is from the source side: 0 reaching into the source cell, 180 at
+        // the output cell. Turns clockwise out and carries on round back, easing at both ends.
+        private float SwingAngle
+        {
+            get
+            {
+                if (swing == Swing.Idle)
+                    return 0f;
+                float t = Mathf.Clamp01((Find.TickManager.TicksGame - swingStart) / (float)HalfSwingTicks);
+                float eased = t * t * (3f - 2f * t);
+                return swing == Swing.Out ? 180f * eased : 180f + 180f * eased;
+            }
+        }
+
+        protected override void DrawAt(Vector3 drawLoc, bool flip = false)
+        {
+            base.DrawAt(drawLoc, flip);
+
+            float angle = Rotation.AsAngle + SwingAngle;
+            Quaternion turn = Quaternion.AngleAxis(angle, Vector3.up);
+            Vector3 pivot = drawLoc;
+            pivot.y = AltitudeLayer.BuildingOnTop.AltitudeFor() + 0.02f;
+
+            Thing thing = Carried;
+            if (thing != null)
+            {
+                Vector3 tip = pivot + turn * new Vector3(0f, 0f, 0.42f);
+                tip.y = pivot.y - 0.01f;
+                Material itemMat = thing.Graphic.MatAt(Rot4.North, thing);
+                Graphics.DrawMesh(MeshPool.plane10, Matrix4x4.TRS(tip, Quaternion.identity, new Vector3(0.55f, 1f, 0.55f)), itemMat, 0);
+            }
+
+            bool closed = thing != null;
+            Material armMat = mode == ArmMode.Loader
+                ? (closed ? ArmTex.LoaderClosed : ArmTex.LoaderOpen)
+                : (closed ? ArmTex.FeederClosed : ArmTex.FeederOpen);
+            Graphics.DrawMesh(MeshPool.plane10, Matrix4x4.TRS(pivot, turn, Vector3.one), armMat, 0);
         }
 
         // What a Loader draws from: the whole storage its gripper cell belongs to - a stockpile

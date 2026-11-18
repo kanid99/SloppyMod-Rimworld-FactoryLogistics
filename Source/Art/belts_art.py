@@ -33,54 +33,74 @@ def chevron_down(draw, cx, cy, size, fill):
             fill=fill)
 
 
-def arm(accent, accent_dark):
-    """The arm facing north: a tray at the back (bottom), a turret, and a jointed arm reaching to
-    the front edge (top) with an open gripper."""
+def arm_base(accent, accent_dark):
+    """The arm's floor-mounted base, facing north: plate, bolts, the output tray on the back
+    edge (bottom) with a chevron pointing out of it, and the turret in the middle. The arm itself
+    is a separate sprite drawn over it each frame, so it can swing."""
     image, draw = new_canvas(CELL, CELL)
     c = CELL / 2
 
-    # Base plate, low and square, so it reads as floor-mounted.
     rect(draw, (14, 14, CELL - 14, CELL - 14), fill=OUTLINE, radius=14)
     rect(draw, (17, 17, CELL - 17, CELL - 17), fill=PLATE, radius=12)
-    # Hazard-ish corner bolts.
     for x, y in ((26, 26), (CELL - 26, 26), (26, CELL - 26), (CELL - 26, CELL - 26)):
         disc(draw, x, y, 4, fill=OUTLINE)
         disc(draw, x, y - 0.5, 2.5, fill=CASE_LIT)
 
-    # Output tray on the back edge, where it puts down; the chevron points out of it, away from
-    # the gripper, which reaches into the cell it takes from.
+    # Output tray on the back edge; the chevron points out of it, away from the source side.
     rect(draw, (36, CELL - 30, CELL - 36, CELL - 8), fill=OUTLINE, radius=5)
     rect(draw, (39, CELL - 27, CELL - 39, CELL - 11), fill=HOLE, radius=4)
     chevron_down(draw, c, CELL - 19, 8, accent)
+    # Intake mark on the front edge, where the gripper reaches in.
+    rect(draw, (44, 8, CELL - 44, 16), fill=accent_dark, radius=3)
 
-    # Turret.
-    disc(draw, c, c + 14, 22, fill=OUTLINE)
-    disc(draw, c, c + 14, 19, fill=CASE_DARK)
-    disc(draw, c, c + 12, 17, fill=CASE)
-    disc(draw, c, c + 9, 9, fill=CASE_LIT)
-
-    # Arm: a thick upper segment and a thinner forearm, both pointing forwards.
-    line(draw, [(c, c + 14), (c, c - 16)], OUTLINE, 18)
-    line(draw, [(c, c + 14), (c, c - 16)], accent_dark, 12)
-    line(draw, [(c - 2, c + 12), (c - 2, c - 14)], accent, 6)
-    disc(draw, c, c - 16, 10, fill=OUTLINE)
-    disc(draw, c, c - 16, 7, fill=CASE_LIT)
-    line(draw, [(c, c - 16), (c, 22)], OUTLINE, 12)
-    line(draw, [(c, c - 16), (c, 22)], CASE, 7)
-
-    # Gripper at the front edge, open.
-    for sign in (-1, 1):
-        polygon(draw, [(c + sign * 4, 26), (c + sign * 17, 18), (c + sign * 19, 6),
-                       (c + sign * 13, 6), (c + sign * 11, 15), (c + sign * 3, 19)], fill=OUTLINE)
-        polygon(draw, [(c + sign * 5, 23), (c + sign * 15, 17), (c + sign * 16, 9),
-                       (c + sign * 14, 9), (c + sign * 12, 16), (c + sign * 4, 20)], fill=accent)
-    disc(draw, c, 22, 6, fill=OUTLINE)
-    disc(draw, c, 22, 3.5, fill=accent_dark)
-
-    # Turret pivot cap last, over the arm root.
-    disc(draw, c, c + 14, 8, fill=OUTLINE)
-    disc(draw, c, c + 13, 5.5, fill=accent)
+    # Turret ring at the pivot.
+    disc(draw, c, c, 24, fill=OUTLINE)
+    disc(draw, c, c, 21, fill=CASE_DARK)
+    disc(draw, c, c - 2, 19, fill=CASE)
     return finish(image, CELL, CELL)
+
+
+def arm_overlay(accent, accent_dark, closed):
+    """The swinging arm, pivot at the middle of the sprite, pointing north: a thick upper arm,
+    an elbow, a forearm and the gripper at the cell's front edge - open, or closed on an item."""
+    image, draw = new_canvas(CELL, CELL)
+    c = CELL / 2
+
+    line(draw, [(c, c), (c, c - 26)], OUTLINE, 18)
+    line(draw, [(c, c), (c, c - 26)], accent_dark, 12)
+    line(draw, [(c - 2, c - 2), (c - 2, c - 24)], accent, 6)
+    disc(draw, c, c - 26, 10, fill=OUTLINE)
+    disc(draw, c, c - 26, 7, fill=CASE_LIT)
+    line(draw, [(c, c - 26), (c, 20)], OUTLINE, 12)
+    line(draw, [(c, c - 26), (c, 20)], CASE, 7)
+
+    for sign in (-1, 1):
+        if closed:
+            pts_out = [(c + sign * 4, 24), (c + sign * 13, 18), (c + sign * 10, 4),
+                       (c + sign * 5, 4), (c + sign * 7, 15), (c + sign * 2, 18)]
+            pts_in = [(c + sign * 5, 21), (c + sign * 11, 17), (c + sign * 9, 7),
+                      (c + sign * 7, 7), (c + sign * 8, 15), (c + sign * 3, 18)]
+        else:
+            pts_out = [(c + sign * 4, 24), (c + sign * 17, 16), (c + sign * 19, 4),
+                       (c + sign * 13, 4), (c + sign * 11, 13), (c + sign * 3, 17)]
+            pts_in = [(c + sign * 5, 21), (c + sign * 15, 15), (c + sign * 16, 7),
+                      (c + sign * 14, 7), (c + sign * 12, 14), (c + sign * 4, 18)]
+        polygon(draw, pts_out, fill=OUTLINE)
+        polygon(draw, pts_in, fill=accent)
+    disc(draw, c, 20, 6, fill=OUTLINE)
+    disc(draw, c, 20, 3.5, fill=accent_dark)
+
+    # Pivot cap over the arm root.
+    disc(draw, c, c, 9, fill=OUTLINE)
+    disc(draw, c, c - 1, 6, fill=accent)
+    return finish(image, CELL, CELL)
+
+
+def arm_icon(accent, accent_dark):
+    """Base and open arm together, for the build menu and gizmo icon."""
+    image = arm_base(accent, accent_dark)
+    image.alpha_composite(arm_overlay(accent, accent_dark, closed=False))
+    return image
 
 
 def lift():
@@ -187,12 +207,13 @@ def save_icon(image, name):
 
 
 def main():
-    loader = arm(TEAL, TEAL_DARK)
-    feeder = arm(AMBER, AMBER_DARK)
-    save_multi(loader, "ArmLoader")
-    save_multi(feeder, "ArmFeeder")
-    save_icon(loader, "ArmLoader")
-    save_icon(feeder, "ArmFeeder")
+    for name, accent, dark in (("ArmLoader", TEAL, TEAL_DARK), ("ArmFeeder", AMBER, AMBER_DARK)):
+        save_multi(arm_base(accent, dark), name)
+        for suffix, closed in (("_Arm", False), ("_ArmClosed", True)):
+            path = os.path.join(BUILDING, name + suffix + ".png")
+            arm_overlay(accent, dark, closed).save(path)
+            print("wrote", path)
+        save_icon(arm_icon(accent, dark), name)
     save_lift("ConveyorLift")
     save_icon(icon_link(), "LiftLink")
     junction_image = junction()

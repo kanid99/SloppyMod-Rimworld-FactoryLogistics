@@ -661,6 +661,12 @@ namespace FactoryLogistics.Belts
         private int CountOnRun(BeltRun run, Need need)
         {
             int count = 0;
+            foreach (Building_LogisticsArm loader in run.loaders)
+            {
+                Thing carried = loader.Carried;
+                if (carried != null && need.MatchesThing(carried))
+                    count += need.Units(carried);
+            }
             foreach (Building_Conveyor belt in run.belts)
                 count += CountIn(belt, need) + CountLoose(belt.Position, need);
             foreach (Building_ConveyorLift lift in run.lifts)
@@ -672,7 +678,11 @@ namespace FactoryLogistics.Belts
         // Feeder, or in the machine's input slot.
         private int CountInFlight(LogisticsNetwork network, Need need)
         {
-            return CountOnRun(network, need) + CountOn(network.feeder.Position, need) + CountOn(network.feeder.OutputCell, need);
+            int count = CountOnRun(network, need) + CountOn(network.feeder.Position, need) + CountOn(network.feeder.OutputCell, need);
+            Thing carried = network.feeder.Carried;
+            if (carried != null && need.MatchesThing(carried))
+                count += need.Units(carried);
+            return count;
         }
 
         // What a Feeder's machine still lacks once everything already on its way is counted.
@@ -712,6 +722,11 @@ namespace FactoryLogistics.Belts
             foreach (Building_ConveyorLift lift in group.lifts)
                 AddLoose(lift.Position, trunkItems);
             AddLoose(group.junction.Position, trunkItems);
+            foreach (Building_LogisticsArm loader in group.loaders)
+            {
+                if (loader.Carried != null)
+                    trunkItems.Add(loader.Carried);
+            }
 
             Dictionary<Thing, int> left = new Dictionary<Thing, int>();
             foreach (Thing thing in trunkItems)
@@ -819,17 +834,8 @@ namespace FactoryLogistics.Belts
                 }
 
                 int take = need.stacks ? source.stackCount : UnityEngine.Mathf.Min(need.count, source.stackCount);
-                IntVec3 from = source.Position;
                 Thing sent = source.SplitOff(take);
-                if (sent.Spawned)
-                    sent.DeSpawn();
-                if (!belt.TryAdd(sent))
-                {
-                    // Put it back where it came from rather than lose it.
-                    GenPlace.TryPlaceThing(sent, from, map, ThingPlaceMode.Near);
-                    loader.status = "FactoryLogistics.LoaderBeltBusy".Translate();
-                    return;
-                }
+                loader.Pick(sent);
 
                 string to = network != null ? network.consumer.thing.LabelShort : group.junction.LabelShort;
                 loader.status = "FactoryLogistics.LoaderSent".Translate(sent.LabelCap, to);
@@ -901,10 +907,16 @@ namespace FactoryLogistics.Belts
 
                 if (wanted)
                 {
-                    if (TryDeliver(feeder, thing))
-                        feeder.status = "FactoryLogistics.FeederDelivered".Translate(thing.LabelCap);
-                    else
-                        feeder.status = "FactoryLogistics.FeederSlotFull".Translate();   // the belt behind waits too
+                    // Only pick it up if it has somewhere to go; taking it and putting it back
+                    // whenever the machine's spot was occupied made it flicker back and forth.
+                    if (CanDeliver(feeder, thing))
+                    {
+                        string picked = thing.LabelCap;
+                        feeder.Pick(thing);
+                        feeder.status = "FactoryLogistics.FeederDelivered".Translate(picked);
+                        return;     // one item per swing
+                    }
+                    feeder.status = "FactoryLogistics.FeederSlotFull".Translate();   // the belt behind waits too
                     continue;
                 }
 
@@ -999,35 +1011,39 @@ namespace FactoryLogistics.Belts
             return null;
         }
 
-        // Into the conveyor or factory hopper on the machine's input slot.
-        private bool TryDeliver(Building_LogisticsArm feeder, Thing thing)
+        // Whether the machine input behind the Feeder (its conveyor, hopper, spot or storage) has
+        // room for this item right now.
+        private bool CanDeliver(Building_LogisticsArm feeder, Thing thing)
         {
             Building_Conveyor slotBelt = feeder.OutputConveyor;
             if (slotBelt != null)
-            {
-                if (!slotBelt.CanAcceptItem(thing) || !slotBelt.HasSpace())
-                    return false;
-                thing.DeSpawn();
-                if (slotBelt.TryAdd(thing))
-                    return true;
-                GenSpawn.Spawn(thing, feeder.Position, map);
+                return slotBelt.HasSpace() && slotBelt.CanAcceptItem(thing);
+            return HasRoomOnCell(feeder.OutputCell, thing);
+        }
+
+        // Puts a carried (unspawned) item into the machine input behind the Feeder.
+        private bool Deliver(Building_LogisticsArm feeder, Thing thing)
+        {
+            if (!CanDeliver(feeder, thing))
                 return false;
-            }
+            Building_Conveyor slotBelt = feeder.OutputConveyor;
+            if (slotBelt != null)
+                return slotBelt.TryAdd(thing);
+            return GenPlace.TryPlaceThing(thing, feeder.OutputCell, map, ThingPlaceMode.Direct);
+        }
 
-            // Only pick it up if it has somewhere to go. Taking it off the Feeder and putting it back
-            // every time the machine's spot was still occupied made it flicker back and forth.
-            IntVec3 slot = feeder.OutputCell;
-            if (!HasRoomOnCell(slot, thing))
+        /// <summary>
+        /// The end of an arm's swing: set the carried item down on the output side - onto the belt
+        /// for a Loader, into the machine input for a Feeder. False if there is no room yet.
+        /// </summary>
+        public bool Release(Building_LogisticsArm arm, Thing thing)
+        {
+            if (arm.Mode == ArmMode.Feeder)
+                return Deliver(arm, thing);
+            Building_Conveyor belt = arm.OutputConveyor;
+            if (belt == null || !belt.HasSpace() || !belt.CanAcceptItem(thing))
                 return false;
-
-            IntVec3 at = thing.Position;
-            thing.DeSpawn();
-            if (GenPlace.TryPlaceThing(thing, slot, map, ThingPlaceMode.Direct))
-                return true;
-
-            if (!thing.Destroyed && !thing.Spawned)
-                GenSpawn.Spawn(thing, at, map);
-            return false;
+            return belt.TryAdd(thing);
         }
 
         // Whether this item can be set down on the cell as it is now: it tops up a stack already

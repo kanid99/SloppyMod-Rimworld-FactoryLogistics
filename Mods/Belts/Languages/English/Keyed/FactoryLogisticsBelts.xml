@@ -53,4 +53,5 @@
   <FactoryLogistics.LoaderRefused>The {0} will not take anything in its storage. First item, {1}: {2}.</FactoryLogistics.LoaderRefused>
   <FactoryLogistics.RefusedByStorage>not allowed by the storage's settings</FactoryLogistics.RefusedByStorage>
   <FactoryLogistics.ForbiddenItem>forbidden</FactoryLogistics.ForbiddenItem>
+  <FactoryLogistics.ArmHolding>Holding {0} until there is room to set it down.</FactoryLogistics.ArmHolding>
 </LanguageData>
