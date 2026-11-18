@@ -189,6 +189,19 @@ def icon_priority():
     return finish(image, 64, 64)
 
 
+def icon_return_leftovers():
+    """A shelf with an arrow curving back up into it: leftovers go home."""
+    image, draw = new_canvas(64, 64)
+    rect(draw, (8, 6, 56, 28), fill=OUTLINE, radius=3)
+    rect(draw, (11, 9, 53, 25), fill=CASE, radius=2)
+    line(draw, [(11, 17), (53, 17)], CASE_DARK, 2)
+    line(draw, [(44, 56), (20, 56), (14, 50), (14, 40)], OUTLINE, 10)
+    line(draw, [(44, 56), (20, 56), (14, 50), (14, 40)], TEAL, 5)
+    polygon(draw, [(14, 30), (4, 44), (24, 44)], fill=OUTLINE)
+    polygon(draw, [(14, 34), (8, 42), (20, 42)], fill=TEAL)
+    return finish(image, 64, 64)
+
+
 def save_multi(image, name):
     os.makedirs(BUILDING, exist_ok=True)
     # North as drawn; east is the north sprite turned a quarter clockwise; south half a turn.
@@ -222,6 +235,7 @@ def main():
     print("wrote", os.path.join(BUILDING, "BeltJunction.png"))
     save_icon(junction_image, "BeltJunction")
     save_icon(icon_priority(), "FeederPriority")
+    save_icon(icon_return_leftovers(), "ReturnLeftovers")
 
 
 if __name__ == "__main__":

@@ -788,6 +788,11 @@ namespace FactoryLogistics.Belts
             if (belt == null)
                 return;
 
+            // A leftover passing behind it that no machine on the network needs any more goes
+            // back into its storage, if the storage takes it.
+            if (loader.ReturnLeftovers && TryReturnLeftover(loader, belt, runs))
+                return;
+
             // One stack at a time onto an empty belt cell.
             if (!belt.HasSpace() || belt.state == Building_Conveyor.ConveyorState.Moving)
             {
@@ -880,6 +885,80 @@ namespace FactoryLogistics.Belts
                     return "FactoryLogistics.LoaderRefused".Translate(network.consumer.thing.LabelShort, first.LabelShort, "FactoryLogistics.ForbiddenItem".Translate());
             }
             return "FactoryLogistics.LoaderNoStock".Translate(missing ?? "?");
+        }
+
+        // Lifts the first surplus item on the belt behind the Loader and starts swinging it back to
+        // a free cell of the storage at its gripper.
+        private bool TryReturnLeftover(Building_LogisticsArm loader, Building_Conveyor belt, List<BeltRun> runs)
+        {
+            if (belt.innerContainer == null || belt.innerContainer.Count == 0)
+                return false;
+            SlotGroup group = loader.SourceCell.InBounds(map) ? loader.SourceCell.GetSlotGroup(map) : null;
+            if (group == null)
+                return false;
+
+            foreach (Thing thing in belt.innerContainer.InnerListForReading.ToArray())
+            {
+                if (!group.parent.Accepts(thing) || StoreCellFor(group, thing) == IntVec3.Invalid)
+                    continue;
+                if (!IsSurplus(thing, runs))
+                    continue;
+
+                string label = thing.LabelCap;
+                belt.innerContainer.Remove(thing);
+                if (belt.innerContainer.Count == 0)
+                {
+                    belt.state = Building_Conveyor.ConveyorState.Waiting;
+                    belt.itemProgress = 0f;
+                }
+                loader.PickReturn(thing);
+                loader.status = "FactoryLogistics.LoaderReturned".Translate(label);
+                return true;
+            }
+            return false;
+        }
+
+        // A cell of the storage that can take this item now, or Invalid.
+        private IntVec3 StoreCellFor(SlotGroup group, Thing thing)
+        {
+            List<IntVec3> cells = group.CellsList;
+            for (int i = 0; i < cells.Count; i++)
+            {
+                if (cells[i].IsValidStorageFor(map, thing))
+                    return cells[i];
+            }
+            return IntVec3.Invalid;
+        }
+
+        // No machine on these runs needs this item: nothing it matches still lacks it once
+        // everything already on its way - this item included - is counted.
+        private bool IsSurplus(Thing thing, List<BeltRun> runs)
+        {
+            foreach (BeltRun run in runs)
+            {
+                List<LogisticsNetwork> networks = new List<LogisticsNetwork>();
+                LogisticsNetwork single = run as LogisticsNetwork;
+                if (single != null)
+                    networks.Add(single);
+                JunctionGroup group = run as JunctionGroup;
+                if (group != null)
+                    networks.AddRange(group.branches);
+
+                foreach (LogisticsNetwork network in networks)
+                {
+                    if (network.consumer == null)
+                        continue;
+                    foreach (Need need in NeedsOf(network.consumer))
+                    {
+                        if (!need.MatchesThing(thing))
+                            continue;
+                        int excess = CountInFlight(network, need) - need.count;
+                        if (excess < need.Units(thing))
+                            return false;
+                    }
+                }
+            }
+            return true;
         }
 
         public void WorkFeeder(Building_LogisticsArm feeder)
@@ -1097,6 +1176,12 @@ namespace FactoryLogistics.Belts
         /// </summary>
         public bool Release(Building_LogisticsArm arm, Thing thing)
         {
+            if (arm.Returning)
+            {
+                SlotGroup group = arm.SourceCell.InBounds(map) ? arm.SourceCell.GetSlotGroup(map) : null;
+                IntVec3 cell = group != null ? StoreCellFor(group, thing) : IntVec3.Invalid;
+                return cell.IsValid && GenPlace.TryPlaceThing(thing, cell, map, ThingPlaceMode.Direct);
+            }
             if (arm.Mode == ArmMode.Feeder)
                 return Deliver(arm, thing);
             Building_Conveyor belt = arm.OutputConveyor;

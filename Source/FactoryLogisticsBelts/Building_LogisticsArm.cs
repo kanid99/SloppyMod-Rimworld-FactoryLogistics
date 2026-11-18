@@ -42,12 +42,16 @@ namespace FactoryLogistics.Belts
         // The swing: reach into the source cell, close, turn half round to the output cell
         // carrying the item, set it down, turn back. The item is really in the arm meanwhile (and
         // counted as on its way), so what you see is what is happening.
-        private enum Swing : byte { Idle, Out, Back }
+        // A return (a Loader putting a leftover back on its shelf) runs the other way: Reach turns
+        // empty-handed to the belt behind it, then Out carries the item round to the shelf.
+        private enum Swing : byte { Idle, Out, Back, Reach }
 
         private const int HalfSwingTicks = 25;
         private ThingOwner<Thing> carried;
         private Swing swing = Swing.Idle;
         private int swingStart;
+        private bool returning;
+        private bool returnLeftovers = true;
         private ArmMode mode = ArmMode.Loader;
         private int priority = 2;
         private const int WorkInterval = 30;
@@ -85,9 +89,32 @@ namespace FactoryLogistics.Belts
             get { return carried.Count > 0 ? carried[0] : null; }
         }
 
+        /// <summary>Whether a Loader puts leftovers no machine needs back into its storage.</summary>
+        public bool ReturnLeftovers
+        {
+            get { return returnLeftovers; }
+        }
+
+        /// <summary>True while carrying an item back to its storage rather than out to the belt.</summary>
+        public bool Returning
+        {
+            get { return returning; }
+        }
+
+        /// <summary>Lifts a leftover off the belt behind it and swings it back to its storage.</summary>
+        public void PickReturn(Thing thing)
+        {
+            Pick(thing);
+            if (carried.Count == 0)
+                return;
+            returning = true;
+            swing = Swing.Reach;
+        }
+
         /// <summary>Takes a despawned item into the gripper and starts the swing to the output side.</summary>
         public void Pick(Thing thing)
         {
+            returning = false;
             if (thing.Spawned)
                 thing.DeSpawn();
             if (!carried.TryAdd(thing, true))
@@ -156,6 +183,8 @@ namespace FactoryLogistics.Belts
             Scribe_Deep.Look(ref carried, "carried", this);
             Scribe_Values.Look(ref swing, "swing", Swing.Idle);
             Scribe_Values.Look(ref swingStart, "swingStart", 0);
+            Scribe_Values.Look(ref returning, "returning", false);
+            Scribe_Values.Look(ref returnLeftovers, "returnLeftovers", true);
             if (Scribe.mode == LoadSaveMode.PostLoadInit && carried == null)
                 carried = new ThingOwner<Thing>(this, true, LookMode.Deep);
         }
@@ -248,6 +277,15 @@ namespace FactoryLogistics.Belts
             if (!PowerOn)
                 return;     // frozen mid-swing until power is back
             int now = Find.TickManager.TicksGame;
+            if (swing == Swing.Reach)
+            {
+                if (now - swingStart >= HalfSwingTicks)
+                {
+                    swing = Swing.Out;
+                    swingStart = now;
+                }
+                return;
+            }
             if (swing == Swing.Out)
             {
                 if (now - swingStart < HalfSwingTicks)
@@ -268,6 +306,13 @@ namespace FactoryLogistics.Belts
                         return;
                     }
                 }
+                if (returning)
+                {
+                    // Already facing its storage again: the swing ends here.
+                    returning = false;
+                    swing = Swing.Idle;
+                    return;
+                }
                 swing = Swing.Back;
                 swingStart = now;
             }
@@ -287,6 +332,8 @@ namespace FactoryLogistics.Belts
                     return 0f;
                 float t = Mathf.Clamp01((Find.TickManager.TicksGame - swingStart) / (float)HalfSwingTicks);
                 float eased = t * t * (3f - 2f * t);
+                if (returning)
+                    return swing == Swing.Reach ? 180f * eased : 180f + 180f * eased;
                 return swing == Swing.Out ? 180f * eased : 180f + 180f * eased;
             }
         }
@@ -300,7 +347,9 @@ namespace FactoryLogistics.Belts
             Vector3 pivot = drawLoc;
             pivot.y = AltitudeLayer.BuildingOnTop.AltitudeFor() + 0.02f;
 
-            Thing thing = Carried;
+            // While reaching for a leftover the item is already lifted off the belt, but the arm is
+            // not there yet: it is shown in the gripper only once the arm has it.
+            Thing thing = swing == Swing.Reach ? null : Carried;
             if (thing != null)
             {
                 Vector3 tip = pivot + turn * new Vector3(0f, 0f, 0.42f);
@@ -373,19 +422,31 @@ namespace FactoryLogistics.Belts
             yield return toggle;
 
             // Turn it round where it stands: takes from the other side, puts down on this one.
-            Command_Action reverse = new Command_Action();
-            reverse.defaultLabel = "FactoryLogistics.ArmReverse".Translate();
-            reverse.defaultDesc = "FactoryLogistics.ArmReverseDesc".Translate();
-            reverse.icon = ContentFinder<Texture2D>.Get("UI/Widgets/RotRight");
-            reverse.action = delegate { Turn(Rotation.Opposite); };
-            yield return reverse;
+            // Turn it where it stands, a quarter turn either way, like Q and E when placing.
+            Command_Action clockwise = new Command_Action();
+            clockwise.defaultLabel = "FactoryLogistics.ArmRotateClockwise".Translate();
+            clockwise.defaultDesc = "FactoryLogistics.ArmRotateDesc".Translate();
+            clockwise.icon = ContentFinder<Texture2D>.Get("UI/Widgets/RotRight");
+            clockwise.action = delegate { Turn(Rotation.Rotated(RotationDirection.Clockwise)); };
+            yield return clockwise;
 
-            Command_Action rotate = new Command_Action();
-            rotate.defaultLabel = "FactoryLogistics.ArmRotate".Translate();
-            rotate.defaultDesc = "FactoryLogistics.ArmRotateDesc".Translate();
-            rotate.icon = ContentFinder<Texture2D>.Get("UI/Widgets/RotLeft");
-            rotate.action = delegate { Turn(Rotation.Rotated(RotationDirection.Clockwise)); };
-            yield return rotate;
+            Command_Action counter = new Command_Action();
+            counter.defaultLabel = "FactoryLogistics.ArmRotateCounter".Translate();
+            counter.defaultDesc = "FactoryLogistics.ArmRotateDesc".Translate();
+            counter.icon = ContentFinder<Texture2D>.Get("UI/Widgets/RotLeft");
+            counter.action = delegate { Turn(Rotation.Rotated(RotationDirection.Counterclockwise)); };
+            yield return counter;
+
+            if (mode == ArmMode.Loader)
+            {
+                Command_Toggle leftovers = new Command_Toggle();
+                leftovers.defaultLabel = "FactoryLogistics.ReturnLeftovers".Translate();
+                leftovers.defaultDesc = "FactoryLogistics.ReturnLeftoversDesc".Translate();
+                leftovers.icon = ContentFinder<Texture2D>.Get("UI/Commands/FactoryLogistics/ReturnLeftovers");
+                leftovers.isActive = delegate { return returnLeftovers; };
+                leftovers.toggleAction = delegate { returnLeftovers = !returnLeftovers; };
+                yield return leftovers;
+            }
 
             if (mode == ArmMode.Feeder)
             {

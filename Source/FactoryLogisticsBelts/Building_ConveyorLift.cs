@@ -186,7 +186,7 @@ namespace FactoryLogistics.Belts
             Command_Action rotate = new Command_Action();
             rotate.defaultLabel = "FactoryLogistics.LiftRotate".Translate();
             rotate.defaultDesc = "FactoryLogistics.LiftRotateDesc".Translate();
-            rotate.icon = ContentFinder<Texture2D>.Get("UI/Widgets/RotLeft");
+            rotate.icon = ContentFinder<Texture2D>.Get("UI/Widgets/RotRight");
             rotate.action = delegate
             {
                 Map map = Map;
