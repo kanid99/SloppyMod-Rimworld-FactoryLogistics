@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Gives every VFE Factory conveyor (they all inherit VFEFactory_ConveyorBase) a "Drop items"
+     button. The belts module only loads with VFE Factory, so no FindMod is needed. -->
+<Patch>
+  <Operation Class="PatchOperationConditional">
+    <xpath>Defs/ThingDef[@Name="VFEFactory_ConveyorBase"]/comps</xpath>
+    <nomatch Class="PatchOperationAdd">
+      <xpath>Defs/ThingDef[@Name="VFEFactory_ConveyorBase"]</xpath>
+      <value>
+        <comps>
+          <li Class="FactoryLogistics.Belts.CompProperties_ConveyorDrop" />
+        </comps>
+      </value>
+    </nomatch>
+    <match Class="PatchOperationAdd">
+      <xpath>Defs/ThingDef[@Name="VFEFactory_ConveyorBase"]/comps</xpath>
+      <value>
+        <li Class="FactoryLogistics.Belts.CompProperties_ConveyorDrop" />
+      </value>
+    </match>
+  </Operation>
+</Patch>

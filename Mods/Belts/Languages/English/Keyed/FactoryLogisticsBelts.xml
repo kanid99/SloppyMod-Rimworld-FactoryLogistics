@@ -60,4 +60,6 @@
   <FactoryLogistics.ReturnLeftovers>Return leftovers</FactoryLogistics.ReturnLeftovers>
   <FactoryLogistics.ReturnLeftoversDesc>When on, this Loader watches the belt behind it for items that no machine on the network still needs - counting everything already on its way - and puts them back into its storage, if the storage accepts them and has room. On a looping belt, leftovers go home at the first Loader whose storage takes them.</FactoryLogistics.ReturnLeftoversDesc>
   <FactoryLogistics.LoaderReturned>Returning {0} to storage: no machine needs it.</FactoryLogistics.LoaderReturned>
+  <FactoryLogistics.BeltDrop>Drop items</FactoryLogistics.BeltDrop>
+  <FactoryLogistics.BeltDropDesc>Kick whatever this belt piece is carrying off it, onto the floor beside the line (never onto another belt or arm).</FactoryLogistics.BeltDropDesc>
 </LanguageData>

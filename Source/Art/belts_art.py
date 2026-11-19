@@ -16,6 +16,7 @@ from tubes_draw import (AMBER, AMBER_DARK, CASE, CASE_DARK, CASE_LIT, HOLE, OUTL
                         TEAL, TEAL_DARK, disc, finish, line, new_canvas, polygon, rect)
 
 CELL = 128
+WHITE_ARROW = (236, 238, 240)
 MODULE = os.path.join("Mods", "Belts")
 BUILDING = os.path.join(MODULE, "Textures", "Things", "Building", "FactoryLogistics")
 COMMANDS = os.path.join(MODULE, "Textures", "UI", "Commands", "FactoryLogistics")
@@ -202,6 +203,21 @@ def icon_return_leftovers():
     return finish(image, 64, 64)
 
 
+def icon_belt_drop():
+    """A belt piece with a crate being kicked off its side."""
+    image, draw = new_canvas(64, 64)
+    rect(draw, (4, 26, 40, 54), fill=OUTLINE, radius=3)
+    rect(draw, (7, 29, 37, 51), fill=CASE, radius=2)
+    for x in (12, 22, 32):
+        polygon(draw, [(x - 3, 33), (x + 3, 40), (x - 3, 47)], fill=CASE_DARK)
+    rect(draw, (36, 8, 58, 30), fill=OUTLINE, radius=3)
+    rect(draw, (39, 11, 55, 27), fill=AMBER, radius=2)
+    line(draw, [(39, 19), (55, 19)], AMBER_DARK, 2)
+    line(draw, [(20, 22), (32, 12)], OUTLINE, 7)
+    line(draw, [(20, 22), (32, 12)], WHITE_ARROW, 3)
+    return finish(image, 64, 64)
+
+
 def save_multi(image, name):
     os.makedirs(BUILDING, exist_ok=True)
     # North as drawn; east is the north sprite turned a quarter clockwise; south half a turn.
@@ -236,6 +252,7 @@ def main():
     save_icon(junction_image, "BeltJunction")
     save_icon(icon_priority(), "FeederPriority")
     save_icon(icon_return_leftovers(), "ReturnLeftovers")
+    save_icon(icon_belt_drop(), "BeltDrop")
 
 
 if __name__ == "__main__":
