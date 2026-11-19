@@ -12,7 +12,7 @@
   <FactoryLogistics.MachineSatisfied>The machine needs nothing right now.</FactoryLogistics.MachineSatisfied>
   <FactoryLogistics.MachineCovered>Everything the machine needs is already on its way.</FactoryLogistics.MachineCovered>
   <FactoryLogistics.LoaderSent>Sent {0} to the {1}.</FactoryLogistics.LoaderSent>
-  <FactoryLogistics.LoaderNoStock>Nothing in its storage the machine wants ({0}).</FactoryLogistics.LoaderNoStock>
+  <FactoryLogistics.LoaderNoStock>Waiting for more to turn up in its storage: the machine still needs {0}.</FactoryLogistics.LoaderNoStock>
   <FactoryLogistics.FeederPaused>Paused: its belts already lead to {0}.</FactoryLogistics.FeederPaused>
   <FactoryLogistics.FeederDelivered>Put {0} in.</FactoryLogistics.FeederDelivered>
   <FactoryLogistics.FeederSlotFull>The machine's input is full; holding the belt.</FactoryLogistics.FeederSlotFull>

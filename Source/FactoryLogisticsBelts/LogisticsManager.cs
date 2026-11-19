@@ -3,6 +3,7 @@ using System.Linq;
 using System.Reflection;
 using PipeSystem;
 using RimWorld;
+using UnityEngine;
 using Verse;
 using VanillaFurnitureExpandedFactory;
 
@@ -848,8 +849,10 @@ namespace FactoryLogistics.Belts
 
                 if (source == null)
                 {
+                    // Nothing more of it here yet: what has been sent stays sent, and this Loader
+                    // keeps looking each time it is free, so the rest goes as it turns up.
                     if (missing == null)
-                        missing = need.Label;
+                        missing = need.count + " " + need.Label;
                     continue;
                 }
 
@@ -1167,6 +1170,17 @@ namespace FactoryLogistics.Belts
             Building_Conveyor slotBelt = feeder.OutputConveyor;
             if (slotBelt != null)
                 return slotBelt.TryAdd(thing);
+
+            // A part-full stack on the spot takes what fits; the remainder stays in the gripper
+            // (Release reports false, so the arm holds it and tries again).
+            int room = RoomInStackFor(feeder.OutputCell, thing);
+            if (room > 0 && room < thing.stackCount)
+            {
+                Thing part = thing.SplitOff(room);
+                if (!GenPlace.TryPlaceThing(part, feeder.OutputCell, map, ThingPlaceMode.Direct))
+                    thing.TryAbsorbStack(part, false);
+                return false;
+            }
             return GenPlace.TryPlaceThing(thing, feeder.OutputCell, map, ThingPlaceMode.Direct);
         }
 
@@ -1190,6 +1204,19 @@ namespace FactoryLogistics.Belts
             return belt.TryAdd(thing);
         }
 
+        // Room left in a stack of the same item already on the cell (0 if there is none).
+        private int RoomInStackFor(IntVec3 cell, Thing thing)
+        {
+            List<Thing> things = cell.GetThingList(map);
+            for (int i = 0; i < things.Count; i++)
+            {
+                Thing other = things[i];
+                if (other.def.category == ThingCategory.Item && other.CanStackWith(thing))
+                    return Mathf.Max(0, other.def.stackLimit - other.stackCount);
+            }
+            return 0;
+        }
+
         // Whether this item can be set down on the cell as it is now: it tops up a stack already
         // there, or the cell holds fewer items than it allows (one on bare floor; more in storage).
         private bool HasRoomOnCell(IntVec3 cell, Thing thing)
@@ -1204,7 +1231,9 @@ namespace FactoryLogistics.Belts
                 if (other.def.category != ThingCategory.Item)
                     continue;
                 items++;
-                if (other.CanStackWith(thing) && other.stackCount + thing.stackCount <= other.def.stackLimit)
+                // Topping up a part-full stack counts, even if only some of it fits: the rest is
+                // held in the arm until there is room.
+                if (other.CanStackWith(thing) && other.stackCount < other.def.stackLimit)
                     return true;
             }
             return items < cell.GetMaxItemsAllowedInCell(map);
