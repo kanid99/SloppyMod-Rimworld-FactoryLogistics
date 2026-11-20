@@ -1,0 +1,5 @@
+[h2]Build 0.9.20[/h2]
+[h3]Fixed[/h3]
+[list]
+[*]Factory machines with a bill set to [b]Forever[/b] (for example the automated masonry saw cutting stone chunks) no longer sit idle waiting for input that never comes. VFE only starts a Forever bill once its ingredient is already in the input hopper, so arms and belts used to think the machine needed nothing; they now deliver the first batch so the bill can start.
+[/list]

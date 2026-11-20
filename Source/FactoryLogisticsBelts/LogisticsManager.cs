@@ -583,7 +583,9 @@ namespace FactoryLogistics.Belts
         {
             List<Need> needs = new List<Need>();
             Process process = machine != null ? machine.Process : null;
-            List<ThingAndResourceOwner> owners = process != null ? process.IngredientsOwners : null;
+            if (process == null)
+                return IdleForeverNeeds(machine);
+            List<ThingAndResourceOwner> owners = process.IngredientsOwners;
             if (owners == null)
                 return needs;
 
@@ -603,6 +605,56 @@ namespace FactoryLogistics.Belts
                 needs.Add(need);
             }
 
+            return needs;
+        }
+
+        private static FieldInfo suspendedField;
+
+        private static bool IsSuspended(Process process)
+        {
+            if (suspendedField == null)
+                suspendedField = typeof(Process).GetField("suspended", BindingFlags.Instance | BindingFlags.NonPublic);
+            if (suspendedField == null)
+                return false;
+            return (bool)suspendedField.GetValue(process);
+        }
+
+        // VFE runs a "Forever" hopper bill only once its ingredient is already sitting in the input
+        // hopper; until then the machine reports no current process, so it looks like it needs
+        // nothing and nobody brings the ingredient: a deadlock (e.g. the masonry saw waiting for a
+        // chunk). For such an idle machine, ask for one batch of the first Forever bill's ingredients.
+        private static List<Need> IdleForeverNeeds(CompAdvancedResourceProcessor machine)
+        {
+            List<Need> needs = new List<Need>();
+            ProcessStack stack = machine != null ? machine.ProcessStack : null;
+            List<Process> processes = stack != null ? stack.Processes : null;
+            if (processes == null)
+                return needs;
+
+            foreach (Process candidate in processes)
+            {
+                if (candidate == null || candidate.Def == null || candidate.repeatMode != BillRepeatModeDefOf.Forever || IsSuspended(candidate))
+                    continue;
+                ProcessDef def = candidate.Def;
+                if (!def.onlyGrabAndOutputToFactoryHoppers || def.autoInputSlots.NullOrEmpty() || def.ingredients.NullOrEmpty())
+                    continue;
+
+                foreach (ProcessDef.Ingredient ingredient in def.ingredients)
+                {
+                    if (ingredient == null || ingredient.pipeNet != null)
+                        continue;
+                    if (ingredient.thing == null && ingredient.thingCategory == null)
+                        continue;
+                    Need need = new Need();
+                    need.thing = ingredient.thing;
+                    need.category = ingredient.thingCategory;
+                    need.count = Mathf.Max(1, Mathf.CeilToInt(ingredient.countNeeded));
+                    need.disallowed = ingredient.thingCategory != null ? ingredient.disallowedThingDefs : null;
+                    needs.Add(need);
+                }
+                if (needs.Count > 0)
+                    return needs;
+            }
             return needs;
         }
 
