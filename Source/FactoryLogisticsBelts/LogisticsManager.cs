@@ -889,10 +889,16 @@ namespace FactoryLogistics.Belts
             foreach (Need need in outstanding)
             {
                 Thing source = null;
+                Building_Conveyor sourceBelt = loader.SourceConveyor;
                 foreach (Thing thing in loader.SourceThings())
                 {
-                    if (thing.Spawned && need.MatchesThing(thing) && !thing.IsForbidden(Faction.OfPlayer)
-                        && !map.reservationManager.IsReservedByAnyoneOf(thing, Faction.OfPlayer))
+                    if (!need.MatchesThing(thing))
+                        continue;
+                    // Off a passing belt: only what its own network needs (that is what "need"
+                    // is), and anything else rides on.
+                    if (sourceBelt != null
+                        || (thing.Spawned && !thing.IsForbidden(Faction.OfPlayer)
+                            && !map.reservationManager.IsReservedByAnyoneOf(thing, Faction.OfPlayer)))
                     {
                         source = thing;
                         break;
@@ -909,7 +915,28 @@ namespace FactoryLogistics.Belts
                 }
 
                 int take = need.stacks ? source.stackCount : UnityEngine.Mathf.Min(need.count, source.stackCount);
-                Thing sent = source.SplitOff(take);
+                Thing sent;
+                if (sourceBelt != null && source.holdingOwner == sourceBelt.innerContainer)
+                {
+                    if (take >= source.stackCount)
+                    {
+                        sourceBelt.innerContainer.Remove(source);
+                        sent = source;
+                    }
+                    else
+                    {
+                        sent = source.SplitOff(take);
+                    }
+                    if (sourceBelt.innerContainer.Count == 0)
+                    {
+                        sourceBelt.state = Building_Conveyor.ConveyorState.Empty;
+                        sourceBelt.itemProgress = 0f;
+                    }
+                }
+                else
+                {
+                    sent = source.SplitOff(take);
+                }
                 loader.Pick(sent);
 
                 loader.status = "FactoryLogistics.LoaderSent".Translate(sent.LabelCap, targets[outstanding.IndexOf(need)]);
@@ -923,6 +950,8 @@ namespace FactoryLogistics.Belts
         // first thing in it, so the player can see which setting to change.
         private string ExplainNoStock(Building_LogisticsArm loader, LogisticsNetwork network, string missing)
         {
+            if (loader.SourceConveyor != null)
+                return "FactoryLogistics.LoaderWatchingBelt".Translate(missing ?? "?");
             Thing first = null;
             foreach (Thing thing in loader.SourceThings())
             {
@@ -948,13 +977,19 @@ namespace FactoryLogistics.Belts
         {
             if (belt.innerContainer == null || belt.innerContainer.Count == 0)
                 return false;
-            SlotGroup group = loader.SourceCell.InBounds(map) ? loader.SourceCell.GetSlotGroup(map) : null;
-            if (group == null)
+            // Back to where it came from: the storage at its gripper, or the belt at its gripper
+            // (a Loader feeding a side line from a main line puts the side line's surplus back
+            // onto the main line).
+            Building_Conveyor sourceBelt = loader.SourceConveyor;
+            SlotGroup group = sourceBelt == null && loader.SourceCell.InBounds(map) ? loader.SourceCell.GetSlotGroup(map) : null;
+            if (group == null && sourceBelt == null)
+                return false;
+            if (sourceBelt != null && !sourceBelt.HasSpace())
                 return false;
 
             foreach (Thing thing in belt.innerContainer.InnerListForReading.ToArray())
             {
-                if (!group.parent.Accepts(thing) || StoreCellFor(group, thing) == IntVec3.Invalid)
+                if (group != null && (!group.parent.Accepts(thing) || StoreCellFor(group, thing) == IntVec3.Invalid))
                     continue;
                 if (!IsSurplus(thing, runs))
                     continue;
@@ -1244,6 +1279,9 @@ namespace FactoryLogistics.Belts
         {
             if (arm.Returning)
             {
+                Building_Conveyor back = arm.SourceConveyor;
+                if (back != null)
+                    return back.HasSpace() && back.CanAcceptItem(thing) && back.TryAdd(thing);
                 SlotGroup group = arm.SourceCell.InBounds(map) ? arm.SourceCell.GetSlotGroup(map) : null;
                 IntVec3 cell = group != null ? StoreCellFor(group, thing) : IntVec3.Invalid;
                 return cell.IsValid && GenPlace.TryPlaceThing(thing, cell, map, ThingPlaceMode.Direct);

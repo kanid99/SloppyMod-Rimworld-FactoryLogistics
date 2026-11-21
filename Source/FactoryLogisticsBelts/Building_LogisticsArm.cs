@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using RimWorld;
 using UnityEngine;
@@ -365,13 +366,26 @@ namespace FactoryLogistics.Belts
             Graphics.DrawMesh(MeshPool.plane10, Matrix4x4.TRS(pivot, turn, Vector3.one), armMat, 0);
         }
 
-        // What a Loader draws from: the whole storage its gripper cell belongs to - a stockpile
-        // zone or a storage building - or, if that cell is not storage, whatever lies on it.
+        // What a Loader draws from: a belt at its gripper (what it carries as it passes), or the
+        // whole storage its gripper cell belongs to - a stockpile zone or a storage building - or,
+        // if that cell is neither, whatever lies on it.
         public IEnumerable<Thing> SourceThings()
         {
             Map map = Map;
             if (map == null || !SourceCell.InBounds(map))
                 yield break;
+
+            // A belt at the gripper: what it is carrying, as it passes.
+            Building_Conveyor belt = LogisticsManager.ConveyorAt(SourceCell, map);
+            if (belt != null)
+            {
+                if (belt.innerContainer != null)
+                {
+                    foreach (Thing thing in belt.innerContainer.InnerListForReading.ToArray())
+                        yield return thing;
+                }
+                yield break;
+            }
 
             SlotGroup group = SourceCell.GetSlotGroup(map);
             if (group != null)

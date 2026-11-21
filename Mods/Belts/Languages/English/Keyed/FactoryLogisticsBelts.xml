@@ -58,8 +58,9 @@
   <FactoryLogistics.ArmRotateClockwise>Rotate clockwise</FactoryLogistics.ArmRotateClockwise>
   <FactoryLogistics.ArmRotateCounter>Rotate counter-clockwise</FactoryLogistics.ArmRotateCounter>
   <FactoryLogistics.ReturnLeftovers>Return leftovers</FactoryLogistics.ReturnLeftovers>
-  <FactoryLogistics.ReturnLeftoversDesc>When on, this Loader watches the belt behind it for items that no machine on the network still needs - counting everything already on its way - and puts them back into its storage, if the storage accepts them and has room. On a looping belt, leftovers go home at the first Loader whose storage takes them.</FactoryLogistics.ReturnLeftoversDesc>
-  <FactoryLogistics.LoaderReturned>Returning {0} to storage: no machine needs it.</FactoryLogistics.LoaderReturned>
+  <FactoryLogistics.ReturnLeftoversDesc>When on, this Loader watches the belt behind it for items that no machine on that belt still needs - counting everything already on its way - and puts them back where it takes from: into its storage (if the storage accepts them and has room), or onto the belt at its gripper. On a looping belt, leftovers go home at the first Loader that can take them.</FactoryLogistics.ReturnLeftoversDesc>
+  <FactoryLogistics.LoaderReturned>Returning {0}: no machine on its belt needs it.</FactoryLogistics.LoaderReturned>
   <FactoryLogistics.BeltDrop>Drop items</FactoryLogistics.BeltDrop>
   <FactoryLogistics.BeltDropDesc>Kick whatever this belt piece is carrying off it, onto the floor beside the line (never onto another belt or arm).</FactoryLogistics.BeltDropDesc>
+  <FactoryLogistics.LoaderWatchingBelt>Watching the belt at its gripper for what its own belt needs: {0}.</FactoryLogistics.LoaderWatchingBelt>
 </LanguageData>
