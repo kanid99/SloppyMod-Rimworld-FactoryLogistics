@@ -250,6 +250,7 @@ namespace FactoryLogistics.Belts
 
             mode = next;
             status = null;
+            returning = false;      // a half-done return would otherwise try to go the old way
             if (Spawned)
             {
                 DirtyMapMesh(Map);
@@ -334,6 +335,10 @@ namespace FactoryLogistics.Belts
                     {
                         if (!thing.Destroyed && !thing.Spawned && thing.holdingOwner == null)
                             carried.TryAdd(thing, true);
+                        // A return that cannot be put back within about ten seconds is sent on to
+                        // the output side instead, so the arm never waits on it forever.
+                        if (returning && now - swingStart > 600)
+                            returning = false;
                         status = "FactoryLogistics.ArmHolding".Translate(thing.LabelShort);
                         return;
                     }

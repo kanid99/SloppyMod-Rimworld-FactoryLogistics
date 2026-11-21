@@ -1,0 +1,11 @@
+[h2]Build 0.9.24[/h2]
+[h3]Fixed[/h3]
+[list]
+[*]A Loader taking from the end of a side line (to send its excess back to a main line) could lift surplus off the main line to "return" it onto the side line's last belt piece, and then hold it forever waiting for room there. It no longer returns items onto a belt that ends at itself.
+[*]An arm that cannot put a returned item back within about ten seconds now sends it on to its output side instead of holding it indefinitely. Arms stuck like this in a save free themselves after updating.
+[*]Switching an arm between Loader and Feeder cancels a half-finished return.
+[/list]
+[h3]Added[/h3]
+[list]
+[*]A belt that ends at a Loader now flows through it: whatever the belt drops on the Loader's cell is passed straight on to the belt behind it, so a side line's tail can return everything left on it to the main line.
+[/list]

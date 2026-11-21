@@ -828,6 +828,31 @@ namespace FactoryLogistics.Belts
         {
             EnsureBuilt();
 
+            // A belt that ends at the Loader drops its items onto the Loader's own cell. Those are
+            // passed straight on to the belt behind it, whatever they are: the line they came on
+            // has nowhere else to go (a side line's tail returning its excess to a main line).
+            Building_Conveyor passOn = loader.OutputConveyor;
+            if (passOn != null)
+            {
+                List<Thing> dropped = new List<Thing>();
+                AddLoose(loader.Position, dropped);
+                if (dropped.Count > 0)
+                {
+                    Thing first = dropped[0];
+                    if (passOn.HasSpace() && passOn.state != Building_Conveyor.ConveyorState.Moving && passOn.CanAcceptItem(first))
+                    {
+                        string label = first.LabelCap;
+                        loader.Pick(first);
+                        loader.status = "FactoryLogistics.LoaderPassedOn".Translate(label);
+                    }
+                    else
+                    {
+                        loader.status = "FactoryLogistics.LoaderBeltBusy".Translate();
+                    }
+                    return;
+                }
+            }
+
             List<BeltRun> runs;
             if (!loaderRuns.TryGetValue(loader, out runs))
             {
@@ -981,6 +1006,9 @@ namespace FactoryLogistics.Belts
             // (a Loader feeding a side line from a main line puts the side line's surplus back
             // onto the main line).
             Building_Conveyor sourceBelt = loader.SourceConveyor;
+            // Never back onto a belt that ends at this Loader: it would only come straight back.
+            if (sourceBelt != null && sourceBelt.ForwardCell == loader.Position)
+                return false;
             SlotGroup group = sourceBelt == null && loader.SourceCell.InBounds(map) ? loader.SourceCell.GetSlotGroup(map) : null;
             if (group == null && sourceBelt == null)
                 return false;
