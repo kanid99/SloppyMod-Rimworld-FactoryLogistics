@@ -79,4 +79,8 @@ Mover: moves anything at its gripper that its filter allows to the cell behind i
   <FactoryLogistics.MoverMoved>Moved {0}.</FactoryLogistics.MoverMoved>
   <FactoryLogistics.MoverNoRoom>Waiting for room behind it.</FactoryLogistics.MoverNoRoom>
   <FactoryLogistics.MoverNothing>Nothing at its gripper that its filter allows.</FactoryLogistics.MoverNothing>
+  <FactoryLogistics.ArmRotateSource>Rotate source</FactoryLogistics.ArmRotateSource>
+  <FactoryLogistics.ArmRotateSourceDesc>Turn the gripper - the side this arm takes from - a quarter turn clockwise. It skips the destination side, so the two are always different.</FactoryLogistics.ArmRotateSourceDesc>
+  <FactoryLogistics.ArmRotateDestination>Rotate destination</FactoryLogistics.ArmRotateDestination>
+  <FactoryLogistics.ArmRotateDestinationDesc>Turn the side this arm puts things down on (marked by its tray) a quarter turn clockwise. It skips the gripper's side. Straight across or round a corner: the arm swings between whichever two sides you pick.</FactoryLogistics.ArmRotateDestinationDesc>
 </LanguageData>

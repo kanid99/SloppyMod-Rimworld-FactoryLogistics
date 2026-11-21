@@ -50,10 +50,8 @@ def arm_base(accent, accent_dark):
         disc(draw, x, y, 4, fill=OUTLINE)
         disc(draw, x, y - 0.5, 2.5, fill=CASE_LIT)
 
-    # Output tray on the back edge; the chevron points out of it, away from the source side.
-    rect(draw, (36, CELL - 30, CELL - 36, CELL - 8), fill=OUTLINE, radius=5)
-    rect(draw, (39, CELL - 27, CELL - 39, CELL - 11), fill=HOLE, radius=4)
-    chevron_down(draw, c, CELL - 19, 8, accent)
+    # The output tray is not part of the base: it is drawn on whichever side the arm puts down
+    # on (arm_tray), since that can be any side but the gripper's.
     # Intake mark on the front edge, where the gripper reaches in.
     rect(draw, (44, 8, CELL - 44, 16), fill=accent_dark, radius=3)
 
@@ -61,6 +59,17 @@ def arm_base(accent, accent_dark):
     disc(draw, c, c, 24, fill=OUTLINE)
     disc(draw, c, c, 21, fill=CASE_DARK)
     disc(draw, c, c - 2, 19, fill=CASE)
+    return finish(image, CELL, CELL)
+
+
+def arm_tray(accent):
+    """The output tray on the south edge, with a chevron pointing out of it. Drawn turned to
+    whichever side the arm puts down on."""
+    image, draw = new_canvas(CELL, CELL)
+    c = CELL / 2
+    rect(draw, (36, CELL - 30, CELL - 36, CELL - 8), fill=OUTLINE, radius=5)
+    rect(draw, (39, CELL - 27, CELL - 39, CELL - 11), fill=HOLE, radius=4)
+    chevron_down(draw, c, CELL - 19, 8, accent)
     return finish(image, CELL, CELL)
 
 
@@ -103,6 +112,7 @@ def arm_overlay(accent, accent_dark, closed):
 def arm_icon(accent, accent_dark):
     """Base and open arm together, for the build menu and gizmo icon."""
     image = arm_base(accent, accent_dark)
+    image.alpha_composite(arm_tray(accent))
     image.alpha_composite(arm_overlay(accent, accent_dark, closed=False))
     return image
 
@@ -249,6 +259,9 @@ def save_icon(image, name):
 def main():
     for name, accent, dark in (("ArmLoader", TEAL, TEAL_DARK), ("ArmFeeder", AMBER, AMBER_DARK), ("ArmMover", LIME, LIME_DARK)):
         save_multi(arm_base(accent, dark), name)
+        tray_path = os.path.join(BUILDING, name + "_Tray.png")
+        arm_tray(accent).save(tray_path)
+        print("wrote", tray_path)
         for suffix, closed in (("_Arm", False), ("_ArmClosed", True)):
             path = os.path.join(BUILDING, name + suffix + ".png")
             arm_overlay(accent, dark, closed).save(path)

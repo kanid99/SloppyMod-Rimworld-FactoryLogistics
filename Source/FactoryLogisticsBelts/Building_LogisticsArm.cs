@@ -39,6 +39,12 @@ namespace FactoryLogistics.Belts
         public static readonly Material FeederClosed = MaterialPool.MatFrom("Things/Building/FactoryLogistics/ArmFeeder_ArmClosed", ShaderDatabase.Cutout);
         public static readonly Material MoverOpen = MaterialPool.MatFrom("Things/Building/FactoryLogistics/ArmMover_Arm", ShaderDatabase.Cutout);
         public static readonly Material MoverClosed = MaterialPool.MatFrom("Things/Building/FactoryLogistics/ArmMover_ArmClosed", ShaderDatabase.Cutout);
+
+        // The output tray, drawn on whichever side the arm puts down on (it can be any side but
+        // the gripper's). Drawn with the tray on the south edge.
+        public static readonly Material LoaderTray = MaterialPool.MatFrom("Things/Building/FactoryLogistics/ArmLoader_Tray", ShaderDatabase.Cutout);
+        public static readonly Material FeederTray = MaterialPool.MatFrom("Things/Building/FactoryLogistics/ArmFeeder_Tray", ShaderDatabase.Cutout);
+        public static readonly Material MoverTray = MaterialPool.MatFrom("Things/Building/FactoryLogistics/ArmMover_Tray", ShaderDatabase.Cutout);
     }
 
     public class Building_LogisticsArm : Building, IThingHolder
@@ -198,7 +204,48 @@ namespace FactoryLogistics.Belts
         /// <summary>Where it puts down: the cell behind it.</summary>
         public IntVec3 OutputCell
         {
-            get { return Position - Rotation.FacingCell; }
+            get { return Position + OutputRot.FacingCell; }
+        }
+
+        // The side it puts down on. -1 (not set yet) is straight across from the gripper, which is
+        // also every arm built before the destination could be turned on its own.
+        private int outputRot = -1;
+
+        public Rot4 OutputRot
+        {
+            get
+            {
+                if (outputRot < 0 || outputRot > 3 || outputRot == Rotation.AsInt)
+                    return Rotation.Opposite;
+                return new Rot4(outputRot);
+            }
+        }
+
+        /// <summary>Turns the gripper (the source side) a quarter turn clockwise, past the destination side.</summary>
+        public void RotateSource()
+        {
+            Rot4 output = OutputRot;
+            outputRot = output.AsInt;
+            Rot4 next = Rotation.Rotated(RotationDirection.Clockwise);
+            if (next == output)
+                next = next.Rotated(RotationDirection.Clockwise);
+            Turn(next);
+        }
+
+        /// <summary>Turns the destination side a quarter turn clockwise, past the gripper.</summary>
+        public void RotateDestination()
+        {
+            Rot4 next = OutputRot.Rotated(RotationDirection.Clockwise);
+            if (next == Rotation)
+                next = next.Rotated(RotationDirection.Clockwise);
+            outputRot = next.AsInt;
+            status = null;
+            if (Spawned)
+            {
+                LogisticsManager manager = LogisticsManager.For(Map);
+                if (manager != null)
+                    manager.MarkDirty();
+            }
         }
 
         public bool PowerOn
@@ -238,6 +285,7 @@ namespace FactoryLogistics.Belts
             Scribe_Values.Look(ref returning, "returning", false);
             Scribe_Values.Look(ref returnLeftovers, "returnLeftovers", true);
             Scribe_Deep.Look(ref moveFilter, "moveFilter");
+            Scribe_Values.Look(ref outputRot, "outputRot", -1);
             if (Scribe.mode == LoadSaveMode.PostLoadInit && carried == null)
                 carried = new ThingOwner<Thing>(this, true, LookMode.Deep);
         }
@@ -400,15 +448,25 @@ namespace FactoryLogistics.Belts
                     return 0f;
                 float t = Mathf.Clamp01((Find.TickManager.TicksGame - swingStart) / (float)HalfSwingTicks);
                 float eased = t * t * (3f - 2f * t);
+                // How far round, clockwise, the destination side is from the gripper: 90, 180 or 270.
+                float span = (OutputRot.AsInt - Rotation.AsInt + 4) % 4 * 90f;
+                if (span <= 0f)
+                    span = 180f;
                 if (returning)
-                    return swing == Swing.Reach ? 180f * eased : 180f + 180f * eased;
-                return swing == Swing.Out ? 180f * eased : 180f + 180f * eased;
+                    return swing == Swing.Reach ? span * eased : span + (360f - span) * eased;
+                return swing == Swing.Out ? span * eased : span + (360f - span) * eased;
             }
         }
 
         protected override void DrawAt(Vector3 drawLoc, bool flip = false)
         {
             base.DrawAt(drawLoc, flip);
+
+            // The tray on the destination side, over the base and under the arm.
+            Vector3 trayPos = drawLoc;
+            trayPos.y = AltitudeLayer.BuildingOnTop.AltitudeFor() + 0.005f;
+            Material tray = mode == ArmMode.Loader ? ArmTex.LoaderTray : mode == ArmMode.Feeder ? ArmTex.FeederTray : ArmTex.MoverTray;
+            Graphics.DrawMesh(MeshPool.plane10, Matrix4x4.TRS(trayPos, Quaternion.AngleAxis(OutputRot.AsAngle - 180f, Vector3.up), Vector3.one), tray, 0);
 
             float angle = Rotation.AsAngle + SwingAngle;
             Quaternion turn = Quaternion.AngleAxis(angle, Vector3.up);
@@ -526,20 +584,21 @@ namespace FactoryLogistics.Belts
                 yield return filter;
             }
 
-            // Turn it where it stands, a quarter turn either way, like Q and E when placing.
-            Command_Action clockwise = new Command_Action();
-            clockwise.defaultLabel = "FactoryLogistics.ArmRotateClockwise".Translate();
-            clockwise.defaultDesc = "FactoryLogistics.ArmRotateDesc".Translate();
-            clockwise.icon = ContentFinder<Texture2D>.Get("UI/Widgets/RotRight");
-            clockwise.action = delegate { Turn(Rotation.Rotated(RotationDirection.Clockwise)); };
-            yield return clockwise;
+            // Source (gripper) and destination sides turn separately, so an arm can pass things
+            // straight across or round a corner.
+            Command_Action rotSource = new Command_Action();
+            rotSource.defaultLabel = "FactoryLogistics.ArmRotateSource".Translate();
+            rotSource.defaultDesc = "FactoryLogistics.ArmRotateSourceDesc".Translate();
+            rotSource.icon = ContentFinder<Texture2D>.Get("UI/Widgets/RotRight");
+            rotSource.action = RotateSource;
+            yield return rotSource;
 
-            Command_Action counter = new Command_Action();
-            counter.defaultLabel = "FactoryLogistics.ArmRotateCounter".Translate();
-            counter.defaultDesc = "FactoryLogistics.ArmRotateDesc".Translate();
-            counter.icon = ContentFinder<Texture2D>.Get("UI/Widgets/RotLeft");
-            counter.action = delegate { Turn(Rotation.Rotated(RotationDirection.Counterclockwise)); };
-            yield return counter;
+            Command_Action rotDest = new Command_Action();
+            rotDest.defaultLabel = "FactoryLogistics.ArmRotateDestination".Translate();
+            rotDest.defaultDesc = "FactoryLogistics.ArmRotateDestinationDesc".Translate();
+            rotDest.icon = ContentFinder<Texture2D>.Get("UI/Widgets/RotLeft");
+            rotDest.action = RotateDestination;
+            yield return rotDest;
 
             if (mode == ArmMode.Loader)
             {
