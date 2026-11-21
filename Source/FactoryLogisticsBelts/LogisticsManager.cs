@@ -963,7 +963,7 @@ namespace FactoryLogistics.Belts
                 belt.innerContainer.Remove(thing);
                 if (belt.innerContainer.Count == 0)
                 {
-                    belt.state = Building_Conveyor.ConveyorState.Waiting;
+                    belt.state = Building_Conveyor.ConveyorState.Empty;
                     belt.itemProgress = 0f;
                 }
                 loader.PickReturn(thing);
@@ -1111,7 +1111,7 @@ namespace FactoryLogistics.Belts
                 belt.innerContainer.Remove(thing);
                 if (belt.innerContainer.Count == 0)
                 {
-                    belt.state = Building_Conveyor.ConveyorState.Waiting;
+                    belt.state = Building_Conveyor.ConveyorState.Empty;
                     belt.itemProgress = 0f;
                 }
                 feeder.Pick(thing);

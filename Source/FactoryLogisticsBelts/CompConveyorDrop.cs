@@ -26,6 +26,23 @@ namespace FactoryLogistics.Belts
             get { return parent as Building_Conveyor; }
         }
 
+        // VFE's belt only pulls from a hopper beside it while it is Empty; one left Waiting with
+        // nothing on it never ticks again. Earlier builds of this mod left belts like that after
+        // lifting an item off them, so any belt found in that state is put back to Empty.
+        public override void CompTick()
+        {
+            base.CompTick();
+            if (!parent.IsHashIntervalTick(250))
+                return;
+            Building_Conveyor belt = Belt;
+            if (belt != null && belt.Spawned && belt.innerContainer != null && belt.innerContainer.Count == 0
+                && belt.state == Building_Conveyor.ConveyorState.Waiting)
+            {
+                belt.state = Building_Conveyor.ConveyorState.Empty;
+                belt.itemProgress = 0f;
+            }
+        }
+
         public override IEnumerable<Gizmo> CompGetGizmosExtra()
         {
             Building_Conveyor belt = Belt;
@@ -57,7 +74,7 @@ namespace FactoryLogistics.Belts
                     GenPlace.TryPlaceThing(thing, at, map, ThingPlaceMode.Near);
             }
 
-            belt.state = Building_Conveyor.ConveyorState.Waiting;
+            belt.state = Building_Conveyor.ConveyorState.Empty;
             belt.itemProgress = 0f;
         }
 
