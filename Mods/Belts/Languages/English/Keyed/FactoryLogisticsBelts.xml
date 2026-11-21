@@ -63,4 +63,6 @@
   <FactoryLogistics.BeltDrop>Drop items</FactoryLogistics.BeltDrop>
   <FactoryLogistics.BeltDropDesc>Kick whatever this belt piece is carrying off it, onto the floor beside the line (never onto another belt or arm).</FactoryLogistics.BeltDropDesc>
   <FactoryLogistics.LoaderWatchingBelt>Watching the belt at its gripper for what its own belt needs: {0}.</FactoryLogistics.LoaderWatchingBelt>
+  <FactoryLogistics.ArmDrop>Drop item</FactoryLogistics.ArmDrop>
+  <FactoryLogistics.ArmDropDesc>Put down what this arm is holding on the floor beside it, off the belt line, and let it get on with its work. Use it when the arm is stuck waiting for room on the other side.</FactoryLogistics.ArmDropDesc>
 </LanguageData>

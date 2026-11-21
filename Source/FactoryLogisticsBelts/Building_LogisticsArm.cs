@@ -127,6 +127,37 @@ namespace FactoryLogistics.Belts
             swingStart = Find.TickManager.TicksGame;
         }
 
+        /// <summary>Puts what the gripper holds on the floor beside the arm, off the line, and ends the swing.</summary>
+        public void DropCarried()
+        {
+            if (!Spawned || carried.Count == 0)
+                return;
+            Map map = Map;
+            IntVec3 self = Position, src = SourceCell, outp = OutputCell;
+            foreach (Thing thing in carried.ToList())
+            {
+                carried.Remove(thing);
+                bool placed = GenPlace.TryPlaceThing(thing, self, map, ThingPlaceMode.Near, null, delegate (IntVec3 c)
+                {
+                    if (c == self || c == src || c == outp || !c.Standable(map))
+                        return false;
+                    List<Thing> here = c.GetThingList(map);
+                    for (int i = 0; i < here.Count; i++)
+                    {
+                        if (here[i] is Building_Conveyor || here[i] is Building_LogisticsArm || here[i] is Building_ConveyorLift || here[i] is Building_BeltJunction)
+                            return false;
+                    }
+                    return true;
+                });
+                if (!placed && !thing.Destroyed && !thing.Spawned)
+                    GenPlace.TryPlaceThing(thing, self, map, ThingPlaceMode.Near);
+            }
+            returning = false;
+            swing = Swing.Back;
+            swingStart = Find.TickManager.TicksGame;
+            status = null;
+        }
+
         public ArmMode Mode
         {
             get { return mode; }
@@ -436,6 +467,18 @@ namespace FactoryLogistics.Belts
             yield return toggle;
 
             // Turn it round where it stands: takes from the other side, puts down on this one.
+            // Whatever it is holding - waiting for room that is not coming, say - goes on the floor
+            // beside it, off the line, and the arm swings home.
+            if (Carried != null)
+            {
+                Command_Action drop = new Command_Action();
+                drop.defaultLabel = "FactoryLogistics.ArmDrop".Translate();
+                drop.defaultDesc = "FactoryLogistics.ArmDropDesc".Translate();
+                drop.icon = ContentFinder<Texture2D>.Get("UI/Commands/FactoryLogistics/BeltDrop");
+                drop.action = DropCarried;
+                yield return drop;
+            }
+
             // Turn it where it stands, a quarter turn either way, like Q and E when placing.
             Command_Action clockwise = new Command_Action();
             clockwise.defaultLabel = "FactoryLogistics.ArmRotateClockwise".Translate();
