@@ -3,7 +3,13 @@
   <FactoryLogistics.ArmNoPower>No power.</FactoryLogistics.ArmNoPower>
   <FactoryLogistics.Mode_Loader>Loader</FactoryLogistics.Mode_Loader>
   <FactoryLogistics.Mode_Feeder>Feeder</FactoryLogistics.Mode_Feeder>
-  <FactoryLogistics.ModeDesc>Switch this arm's job. Its gripper reaches into the cell it takes from; it puts down on the cell behind it.\n\nLoader: takes from the storage at its gripper and puts onto the conveyor behind it, sending only what the network's machine still needs.\n\nFeeder: gripper towards the end of a belt; puts what arrives into the machine input behind it (factory hopper or conveyor, the repair centre's item spot, or storage). Anything no longer wanted is set down beside it.</FactoryLogistics.ModeDesc>
+  <FactoryLogistics.ModeDesc>Switch this arm's job (Loader, Feeder, Mover). Its gripper reaches into the cell it takes from; it puts down on the cell behind it.
+
+Loader: takes from the storage or passing belt at its gripper and puts onto the conveyor behind it, sending only what the machines on that belt still need.
+
+Feeder: gripper towards a belt; puts what its machine wants into the machine input behind it (factory hopper or conveyor, the repair centre's spots, or storage). Anything no longer wanted is set down beside it.
+
+Mover: moves anything at its gripper that its filter allows to the cell behind it, whatever is there - belt, storage or floor - while there is room. No network, no questions.</FactoryLogistics.ModeDesc>
   <FactoryLogistics.LoaderNoBelt>No conveyor behind it to put onto. (The gripper faces the storage it takes from.)</FactoryLogistics.LoaderNoBelt>
   <FactoryLogistics.LoaderNoFeeder>Its belt does not lead to a Feeder (one at the end of the belt, or with its gripper on the belt as it passes).</FactoryLogistics.LoaderNoFeeder>
   <FactoryLogistics.NoMachine>Nothing to feed behind the Feeder: no factory machine input, repair centre item spot or storage there. (The gripper faces the belt.)</FactoryLogistics.NoMachine>
@@ -66,4 +72,11 @@
   <FactoryLogistics.ArmDrop>Drop item</FactoryLogistics.ArmDrop>
   <FactoryLogistics.ArmDropDesc>Put down what this arm is holding on the floor beside it, off the belt line, and let it get on with its work. Use it when the arm is stuck waiting for room on the other side.</FactoryLogistics.ArmDropDesc>
   <FactoryLogistics.LoaderPassedOn>Passing {0} on from the belt that ends here.</FactoryLogistics.LoaderPassedOn>
+  <FactoryLogistics.Mode_Mover>Mover</FactoryLogistics.Mode_Mover>
+  <FactoryLogistics.MoveFilter>What to move</FactoryLogistics.MoveFilter>
+  <FactoryLogistics.MoveFilterDesc>Choose what this Mover moves. Anything else at its gripper is left alone.</FactoryLogistics.MoveFilterDesc>
+  <FactoryLogistics.MoveFilterHint>This Mover takes anything allowed here from its gripper side and puts it down behind it.</FactoryLogistics.MoveFilterHint>
+  <FactoryLogistics.MoverMoved>Moved {0}.</FactoryLogistics.MoverMoved>
+  <FactoryLogistics.MoverNoRoom>Waiting for room behind it.</FactoryLogistics.MoverNoRoom>
+  <FactoryLogistics.MoverNothing>Nothing at its gripper that its filter allows.</FactoryLogistics.MoverNothing>
 </LanguageData>

@@ -17,6 +17,9 @@ from tubes_draw import (AMBER, AMBER_DARK, CASE, CASE_DARK, CASE_LIT, HOLE, OUTL
 
 CELL = 128
 WHITE_ARROW = (236, 238, 240)
+# The Mover's accent: neither "going in" teal nor "coming out" amber, since it does not care.
+LIME = (150, 196, 78)
+LIME_DARK = (78, 118, 40)
 MODULE = os.path.join("Mods", "Belts")
 BUILDING = os.path.join(MODULE, "Textures", "Things", "Building", "FactoryLogistics")
 COMMANDS = os.path.join(MODULE, "Textures", "UI", "Commands", "FactoryLogistics")
@@ -218,6 +221,14 @@ def icon_belt_drop():
     return finish(image, 64, 64)
 
 
+def icon_move_filter():
+    """A funnel in the Mover's lime."""
+    image, draw = new_canvas(64, 64)
+    polygon(draw, [(6, 8), (58, 8), (38, 34), (38, 56), (26, 50), (26, 34)], fill=OUTLINE)
+    polygon(draw, [(12, 12), (52, 12), (34, 33), (34, 50), (30, 48), (30, 33)], fill=LIME)
+    return finish(image, 64, 64)
+
+
 def save_multi(image, name):
     os.makedirs(BUILDING, exist_ok=True)
     # North as drawn; east is the north sprite turned a quarter clockwise; south half a turn.
@@ -236,7 +247,7 @@ def save_icon(image, name):
 
 
 def main():
-    for name, accent, dark in (("ArmLoader", TEAL, TEAL_DARK), ("ArmFeeder", AMBER, AMBER_DARK)):
+    for name, accent, dark in (("ArmLoader", TEAL, TEAL_DARK), ("ArmFeeder", AMBER, AMBER_DARK), ("ArmMover", LIME, LIME_DARK)):
         save_multi(arm_base(accent, dark), name)
         for suffix, closed in (("_Arm", False), ("_ArmClosed", True)):
             path = os.path.join(BUILDING, name + suffix + ".png")
@@ -253,6 +264,7 @@ def main():
     save_icon(icon_priority(), "FeederPriority")
     save_icon(icon_return_leftovers(), "ReturnLeftovers")
     save_icon(icon_belt_drop(), "BeltDrop")
+    save_icon(icon_move_filter(), "MoveFilter")
 
 
 if __name__ == "__main__":

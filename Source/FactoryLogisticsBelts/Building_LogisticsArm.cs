@@ -12,6 +12,7 @@ namespace FactoryLogistics.Belts
     {
         Loader,     // storage at its gripper -> belt behind it
         Feeder,     // end of a belt at its gripper -> machine input behind it
+        Mover,      // anything at its gripper (its filter allows) -> behind it, no questions asked
     }
 
     // One building, two jobs, chosen with a gizmo. Its gripper reaches into the cell it takes
@@ -36,6 +37,8 @@ namespace FactoryLogistics.Belts
         public static readonly Material LoaderClosed = MaterialPool.MatFrom("Things/Building/FactoryLogistics/ArmLoader_ArmClosed", ShaderDatabase.Cutout);
         public static readonly Material FeederOpen = MaterialPool.MatFrom("Things/Building/FactoryLogistics/ArmFeeder_Arm", ShaderDatabase.Cutout);
         public static readonly Material FeederClosed = MaterialPool.MatFrom("Things/Building/FactoryLogistics/ArmFeeder_ArmClosed", ShaderDatabase.Cutout);
+        public static readonly Material MoverOpen = MaterialPool.MatFrom("Things/Building/FactoryLogistics/ArmMover_Arm", ShaderDatabase.Cutout);
+        public static readonly Material MoverClosed = MaterialPool.MatFrom("Things/Building/FactoryLogistics/ArmMover_ArmClosed", ShaderDatabase.Cutout);
     }
 
     public class Building_LogisticsArm : Building, IThingHolder
@@ -62,6 +65,23 @@ namespace FactoryLogistics.Belts
 
         private CompPowerTrader power;
         private Graphic feederGraphic;
+        private Graphic moverGraphic;
+
+        // A Mover's filter: what it will move. Allows everything until the player narrows it.
+        private ThingFilter moveFilter;
+
+        public ThingFilter MoveFilter
+        {
+            get
+            {
+                if (moveFilter == null)
+                {
+                    moveFilter = new ThingFilter();
+                    moveFilter.SetAllow(ThingCategoryDefOf.Root, true);
+                }
+                return moveFilter;
+            }
+        }
 
         public Building_LogisticsArm()
         {
@@ -217,6 +237,7 @@ namespace FactoryLogistics.Belts
             Scribe_Values.Look(ref swingStart, "swingStart", 0);
             Scribe_Values.Look(ref returning, "returning", false);
             Scribe_Values.Look(ref returnLeftovers, "returnLeftovers", true);
+            Scribe_Deep.Look(ref moveFilter, "moveFilter");
             if (Scribe.mode == LoadSaveMode.PostLoadInit && carried == null)
                 carried = new ThingOwner<Thing>(this, true, LookMode.Deep);
         }
@@ -232,9 +253,17 @@ namespace FactoryLogistics.Belts
                 if (mode == ArmMode.Loader)
                     return base.Graphic;
 
+                GraphicData data = def.graphicData;
+                if (mode == ArmMode.Mover)
+                {
+                    if (moverGraphic == null)
+                        moverGraphic = GraphicDatabase.Get<Graphic_Multi>(
+                            data.texPath.Replace("Loader", "Mover"), data.shaderType.Shader, data.drawSize, DrawColor);
+                    return moverGraphic;
+                }
+
                 if (feederGraphic == null)
                 {
-                    GraphicData data = def.graphicData;
                     feederGraphic = GraphicDatabase.Get<Graphic_Multi>(
                         data.texPath.Replace("Loader", "Feeder"), data.shaderType.Shader, data.drawSize, DrawColor);
                 }
@@ -301,8 +330,10 @@ namespace FactoryLogistics.Belts
 
             if (mode == ArmMode.Loader)
                 manager.WorkLoader(this);
-            else
+            else if (mode == ArmMode.Feeder)
                 manager.WorkFeeder(this);
+            else
+                manager.WorkMover(this);
         }
 
         private void TickSwing()
@@ -398,7 +429,9 @@ namespace FactoryLogistics.Belts
             bool closed = thing != null;
             Material armMat = mode == ArmMode.Loader
                 ? (closed ? ArmTex.LoaderClosed : ArmTex.LoaderOpen)
-                : (closed ? ArmTex.FeederClosed : ArmTex.FeederOpen);
+                : mode == ArmMode.Feeder
+                    ? (closed ? ArmTex.FeederClosed : ArmTex.FeederOpen)
+                    : (closed ? ArmTex.MoverClosed : ArmTex.MoverOpen);
             Graphics.DrawMesh(MeshPool.plane10, Matrix4x4.TRS(pivot, turn, Vector3.one), armMat, 0);
         }
 
@@ -463,11 +496,10 @@ namespace FactoryLogistics.Belts
             Command_Action toggle = new Command_Action();
             toggle.defaultLabel = ("FactoryLogistics.Mode_" + mode).Translate();
             toggle.defaultDesc = "FactoryLogistics.ModeDesc".Translate();
-            toggle.icon = ContentFinder<Texture2D>.Get(
-                mode == ArmMode.Loader ? "UI/Commands/FactoryLogistics/ArmLoader" : "UI/Commands/FactoryLogistics/ArmFeeder");
+            toggle.icon = ContentFinder<Texture2D>.Get("UI/Commands/FactoryLogistics/Arm" + mode);
             toggle.action = delegate
             {
-                SetMode(mode == ArmMode.Loader ? ArmMode.Feeder : ArmMode.Loader);
+                SetMode(mode == ArmMode.Loader ? ArmMode.Feeder : mode == ArmMode.Feeder ? ArmMode.Mover : ArmMode.Loader);
             };
             yield return toggle;
 
@@ -482,6 +514,16 @@ namespace FactoryLogistics.Belts
                 drop.icon = ContentFinder<Texture2D>.Get("UI/Commands/FactoryLogistics/BeltDrop");
                 drop.action = DropCarried;
                 yield return drop;
+            }
+
+            if (mode == ArmMode.Mover)
+            {
+                Command_Action filter = new Command_Action();
+                filter.defaultLabel = "FactoryLogistics.MoveFilter".Translate();
+                filter.defaultDesc = "FactoryLogistics.MoveFilterDesc".Translate();
+                filter.icon = ContentFinder<Texture2D>.Get("UI/Commands/FactoryLogistics/MoveFilter");
+                filter.action = delegate { Find.WindowStack.Add(new Dialog_ArmFilter(this)); };
+                yield return filter;
             }
 
             // Turn it where it stands, a quarter turn either way, like Q and E when placing.
@@ -552,6 +594,39 @@ namespace FactoryLogistics.Belts
             Thing machine = manager != null ? manager.MachineFor(this) : null;
             if (machine != null)
                 GenDraw.DrawLineBetween(DrawPos, machine.DrawPos, SimpleColor.Orange);
+        }
+    }
+}
+
+namespace FactoryLogistics.Belts
+{
+    public class Dialog_ArmFilter : Window
+    {
+        private readonly Building_LogisticsArm arm;
+        private readonly ThingFilterUI.UIState state = new ThingFilterUI.UIState();
+
+        public override Vector2 InitialSize
+        {
+            get { return new Vector2(420f, 620f); }
+        }
+
+        public Dialog_ArmFilter(Building_LogisticsArm arm)
+        {
+            this.arm = arm;
+            doCloseX = true;
+            doCloseButton = true;
+            closeOnClickedOutside = true;
+            absorbInputAroundWindow = true;
+        }
+
+        public override void DoWindowContents(Rect inRect)
+        {
+            Text.Font = GameFont.Medium;
+            Widgets.Label(new Rect(0f, 0f, inRect.width, 34f), "FactoryLogistics.MoveFilter".Translate());
+            Text.Font = GameFont.Small;
+            Widgets.Label(new Rect(0f, 36f, inRect.width, 44f), "FactoryLogistics.MoveFilterHint".Translate());
+            Rect list = new Rect(0f, 84f, inRect.width, inRect.height - 84f - CloseButSize.y - 12f);
+            ThingFilterUI.DoThingFilterConfigWindow(list, state, arm.MoveFilter, null, 1, map: arm.Map);
         }
     }
 }

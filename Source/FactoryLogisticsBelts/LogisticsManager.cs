@@ -253,7 +253,7 @@ namespace FactoryLogistics.Belts
             {
                 if (arm.Mode == ArmMode.Feeder)
                     feeders.Add(arm);
-                else
+                else if (arm.Mode == ArmMode.Loader)
                     loaders.Add(arm);
             }
             List<Building_ConveyorLift> allLifts = AllOf<Building_ConveyorLift>(map);
@@ -1274,7 +1274,60 @@ namespace FactoryLogistics.Belts
             Building_Conveyor slotBelt = feeder.OutputConveyor;
             if (slotBelt != null)
                 return slotBelt.HasSpace() && slotBelt.CanAcceptItem(thing);
+            // A Mover putting into storage keeps to the storage's settings; a Feeder serves a
+            // machine that has already said it wants the item.
+            if (feeder.Mode == ArmMode.Mover)
+            {
+                SlotGroup group = feeder.OutputCell.InBounds(map) ? feeder.OutputCell.GetSlotGroup(map) : null;
+                if (group != null && !group.parent.Accepts(thing))
+                    return false;
+            }
             return HasRoomOnCell(feeder.OutputCell, thing);
+        }
+
+        // A Mover: anything at its gripper that its filter allows goes to the other side - what a
+        // belt drops on its own cell first, then what the gripper reaches (a passing belt, storage,
+        // or whatever lies there) - as long as there is room.
+        public void WorkMover(Building_LogisticsArm mover)
+        {
+            List<Thing> candidates = new List<Thing>();
+            AddLoose(mover.Position, candidates);
+            Building_Conveyor sourceBelt = mover.SourceConveyor;
+            foreach (Thing thing in mover.SourceThings())
+                candidates.Add(thing);
+
+            ThingFilter filter = mover.MoveFilter;
+            bool anyAllowed = false;
+            foreach (Thing thing in candidates)
+            {
+                if (!filter.Allows(thing))
+                    continue;
+                bool onBelt = sourceBelt != null && thing.holdingOwner == sourceBelt.innerContainer;
+                if (!onBelt && (!thing.Spawned || thing.IsForbidden(Faction.OfPlayer)
+                    || map.reservationManager.IsReservedByAnyoneOf(thing, Faction.OfPlayer)))
+                    continue;
+                anyAllowed = true;
+                if (!CanDeliver(mover, thing))
+                    continue;
+
+                string label = thing.LabelCap;
+                if (onBelt)
+                {
+                    sourceBelt.innerContainer.Remove(thing);
+                    if (sourceBelt.innerContainer.Count == 0)
+                    {
+                        sourceBelt.state = Building_Conveyor.ConveyorState.Empty;
+                        sourceBelt.itemProgress = 0f;
+                    }
+                }
+                mover.Pick(thing);
+                mover.status = "FactoryLogistics.MoverMoved".Translate(label);
+                return;
+            }
+
+            mover.status = anyAllowed
+                ? "FactoryLogistics.MoverNoRoom".Translate().ToString()
+                : "FactoryLogistics.MoverNothing".Translate().ToString();
         }
 
         // Puts a carried (unspawned) item into the machine input behind the Feeder.
@@ -1314,7 +1367,7 @@ namespace FactoryLogistics.Belts
                 IntVec3 cell = group != null ? StoreCellFor(group, thing) : IntVec3.Invalid;
                 return cell.IsValid && GenPlace.TryPlaceThing(thing, cell, map, ThingPlaceMode.Direct);
             }
-            if (arm.Mode == ArmMode.Feeder)
+            if (arm.Mode == ArmMode.Feeder || arm.Mode == ArmMode.Mover)
                 return Deliver(arm, thing);
             Building_Conveyor belt = arm.OutputConveyor;
             if (belt == null || !belt.HasSpace() || !belt.CanAcceptItem(thing))
