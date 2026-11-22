@@ -596,8 +596,28 @@ namespace FactoryLogistics.Belts
             SlotGroup group = SourceCell.GetSlotGroup(map);
             if (group != null)
             {
-                foreach (Thing thing in group.HeldThings)
-                    yield return thing;
+                foreach (SlotGroup g in StorageAround(group))
+                {
+                    foreach (Thing thing in g.HeldThings)
+                        yield return thing;
+                    // The rest of the row may keep its items inside itself too (the building at
+                    // the gripper was already listed above).
+                    Thing parentThing = g.parent as Thing;
+                    IThingHolder holder = g.parent as IThingHolder;
+                    if (g != group && holder != null && parentThing != null && parentThing.Position != SourceCell
+                        && !parentThing.OccupiedRect().Contains(SourceCell))
+                    {
+                        ThingOwner inside = holder.GetDirectlyHeldThings();
+                        if (inside != null)
+                        {
+                            foreach (Thing thing in inside.ToList())
+                            {
+                                if (thing.def.category == ThingCategory.Item && !thing.Spawned)
+                                    yield return thing;
+                            }
+                        }
+                    }
+                }
 
                 yield break;
             }
@@ -607,6 +627,50 @@ namespace FactoryLogistics.Belts
             {
                 if (things[i].def.category == ThingCategory.Item)
                     yield return things[i];
+            }
+        }
+
+        // The whole storage the gripper reaches into, as a player sees it: a stockpile zone, or a
+        // shelf - and with a shelf, every storage building linked to it (Link settings) and every
+        // one of the same kind joined to it in a row, since a row of shelves or crates is really
+        // several buildings each with its own storage.
+        private const int MaxStorageBuildings = 40;
+
+        private IEnumerable<SlotGroup> StorageAround(SlotGroup start)
+        {
+            yield return start;
+            Building_Storage first = start.parent as Building_Storage;
+            if (first == null)
+                yield break;
+
+            HashSet<Building_Storage> seen = new HashSet<Building_Storage> { first };
+            Queue<Building_Storage> open = new Queue<Building_Storage>();
+            open.Enqueue(first);
+
+            IStorageGroupMember member = first as IStorageGroupMember;
+            if (member != null && member.Group != null)
+            {
+                foreach (IStorageGroupMember other in member.Group.members)
+                {
+                    Building_Storage b = other as Building_Storage;
+                    if (b != null && b.Spawned && b.Map == Map && seen.Add(b))
+                        open.Enqueue(b);
+                }
+            }
+
+            while (open.Count > 0 && seen.Count <= MaxStorageBuildings)
+            {
+                Building_Storage b = open.Dequeue();
+                if (b != first && b.GetSlotGroup() != null)
+                    yield return b.GetSlotGroup();
+                foreach (IntVec3 c in GenAdj.CellsAdjacentCardinal(b))
+                {
+                    if (!c.InBounds(Map))
+                        continue;
+                    Building_Storage next = c.GetEdifice(Map) as Building_Storage;
+                    if (next != null && next.def == first.def && seen.Add(next))
+                        open.Enqueue(next);
+                }
             }
         }
 
