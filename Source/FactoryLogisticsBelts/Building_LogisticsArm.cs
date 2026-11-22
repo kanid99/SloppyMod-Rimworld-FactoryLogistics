@@ -144,6 +144,8 @@ namespace FactoryLogistics.Belts
             returning = false;
             if (thing.Spawned)
                 thing.DeSpawn();
+            else if (thing.holdingOwner != null)
+                thing.holdingOwner.Remove(thing);      // out of a storage building that holds it inside
             if (!carried.TryAdd(thing, true))
             {
                 GenPlace.TryPlaceThing(thing, Position, Map, ThingPlaceMode.Near);
@@ -514,6 +516,25 @@ namespace FactoryLogistics.Belts
                 yield break;
             }
 
+            // A storage building that keeps its items inside itself (a crate, a deep-storage unit,
+            // anything with a "contained items" list) rather than on its cells.
+            List<Thing> here = SourceCell.GetThingList(map);
+            for (int i = 0; i < here.Count; i++)
+            {
+                Building building = here[i] as Building;
+                if (building == null || building is Building_LogisticsArm || building is Building_ConveyorLift || building is Building_BeltJunction)
+                    continue;
+                IThingHolder holder = building as IThingHolder;
+                ThingOwner inside = holder != null ? holder.GetDirectlyHeldThings() : null;
+                if (inside == null)
+                    continue;
+                foreach (Thing thing in inside.ToList())
+                {
+                    if (thing.def.category == ThingCategory.Item)
+                        yield return thing;
+                }
+            }
+
             SlotGroup group = SourceCell.GetSlotGroup(map);
             if (group != null)
             {
@@ -529,6 +550,22 @@ namespace FactoryLogistics.Belts
                 if (things[i].def.category == ThingCategory.Item)
                     yield return things[i];
             }
+        }
+
+        /// <summary>Whether the arm may take this item from its source right now.</summary>
+        public bool CanTakeFromSource(Thing thing)
+        {
+            if (thing == null || thing.Destroyed)
+                return false;
+            Building_Conveyor belt = SourceConveyor;
+            if (belt != null && thing.holdingOwner == belt.innerContainer)
+                return true;
+            if (thing.IsForbidden(Faction.OfPlayer))
+                return false;
+            if (thing.Spawned)
+                return !Map.reservationManager.IsReservedByAnyoneOf(thing, Faction.OfPlayer);
+            // Held inside a storage building at the gripper.
+            return thing.holdingOwner != null;
         }
 
         // The belt at the gripper: what a Feeder takes from as it passes (or ends here).

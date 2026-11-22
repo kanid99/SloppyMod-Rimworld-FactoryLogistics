@@ -921,9 +921,7 @@ namespace FactoryLogistics.Belts
                         continue;
                     // Off a passing belt: only what its own network needs (that is what "need"
                     // is), and anything else rides on.
-                    if (sourceBelt != null
-                        || (thing.Spawned && !thing.IsForbidden(Faction.OfPlayer)
-                            && !map.reservationManager.IsReservedByAnyoneOf(thing, Faction.OfPlayer)))
+                    if (loader.CanTakeFromSource(thing))
                     {
                         source = thing;
                         break;
@@ -1303,8 +1301,8 @@ namespace FactoryLogistics.Belts
                 if (!filter.Allows(thing))
                     continue;
                 bool onBelt = sourceBelt != null && thing.holdingOwner == sourceBelt.innerContainer;
-                if (!onBelt && (!thing.Spawned || thing.IsForbidden(Faction.OfPlayer)
-                    || map.reservationManager.IsReservedByAnyoneOf(thing, Faction.OfPlayer)))
+                bool onOwnCell = thing.Spawned && thing.Position == mover.Position;
+                if (!onBelt && !onOwnCell && !mover.CanTakeFromSource(thing))
                     continue;
                 anyAllowed = true;
                 if (!CanDeliver(mover, thing))
