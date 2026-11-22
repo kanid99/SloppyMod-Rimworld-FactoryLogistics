@@ -1,0 +1,5 @@
+[h2]Build 0.9.29[/h2]
+[h3]Changed[/h3]
+[list]
+[*]Performance: conveyor arms fed by storage (shelves, stockpiles, crates) now check for work every 1.5 seconds instead of every half second, and only every 4 seconds once they have found nothing a few times in a row - back to quick as soon as they move something. Arms fed by a belt (gripper on a belt, or a belt ending on them) still check every half second, as before. Turning an arm or changing its mode makes it look again straight away.
+[/list]

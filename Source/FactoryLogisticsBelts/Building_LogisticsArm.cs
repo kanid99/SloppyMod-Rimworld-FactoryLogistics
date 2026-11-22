@@ -64,7 +64,20 @@ namespace FactoryLogistics.Belts
         private bool returnLeftovers = true;
         private ArmMode mode = ArmMode.Loader;
         private int priority = 2;
-        private const int WorkInterval = 30;
+        // How often it looks for work. An arm fed by a belt looks every half second, which in play
+        // catches everything going past; one fed by storage, whose stock changes slowly, looks
+        // less often - and less often still once it has found nothing a few times running, until
+        // it moves something again.
+        private const int BeltInterval = 30;
+        private const int StorageInterval = 90;
+        private const int IdleInterval = 250;
+        private const int IdleChecksBeforeSlowing = 4;
+        private const int FeedCheckInterval = 250;
+
+        private int nextWork;
+        private int idleChecks;
+        private bool beltFed;
+        private int beltFedCheckedAt = -99999;
 
         // Status for the inspect pane, set by the last work step.
         public string status;
@@ -242,6 +255,7 @@ namespace FactoryLogistics.Belts
                 next = next.Rotated(RotationDirection.Clockwise);
             outputRot = next.AsInt;
             status = null;
+            Wake();
             if (Spawned)
             {
                 LogisticsManager manager = LogisticsManager.For(Map);
@@ -329,6 +343,7 @@ namespace FactoryLogistics.Belts
 
             mode = next;
             status = null;
+            Wake();
             returning = false;      // a half-done return would otherwise try to go the old way
             if (Spawned)
             {
@@ -346,6 +361,7 @@ namespace FactoryLogistics.Belts
             Map map = Map;
             Rotation = facing;
             status = null;
+            Wake();
             DirtyMapMesh(map);
             LogisticsManager manager = LogisticsManager.For(map);
             if (manager != null)
@@ -365,8 +381,12 @@ namespace FactoryLogistics.Belts
                 return;
             }
 
-            if (!Spawned || !this.IsHashIntervalTick(WorkInterval))
+            if (!Spawned)
                 return;
+            int now = Find.TickManager.TicksGame;
+            if (now < nextWork)
+                return;
+            nextWork = now + NextInterval(now);
 
             if (!PowerOn)
             {
@@ -384,6 +404,44 @@ namespace FactoryLogistics.Belts
                 manager.WorkFeeder(this);
             else
                 manager.WorkMover(this);
+
+            // Picked something up: stay quick. Found nothing: count towards slowing down.
+            if (Busy)
+                idleChecks = 0;
+            else if (idleChecks < IdleChecksBeforeSlowing)
+                idleChecks++;
+        }
+
+        private int NextInterval(int now)
+        {
+            if (now - beltFedCheckedAt >= FeedCheckInterval || now < beltFedCheckedAt)
+            {
+                beltFedCheckedAt = now;
+                beltFed = SourceConveyor != null || BeltEndsHere();
+            }
+            if (beltFed)
+                return BeltInterval;
+            return idleChecks >= IdleChecksBeforeSlowing ? IdleInterval : StorageInterval;
+        }
+
+        // A belt whose end points at this arm drops its items onto it.
+        private bool BeltEndsHere()
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                Building_Conveyor belt = LogisticsManager.ConveyorAt(Position + GenAdj.CardinalDirections[i], Map);
+                if (belt != null && belt.ForwardCell == Position)
+                    return true;
+            }
+            return false;
+        }
+
+        /// <summary>Look again soon: something about it changed (turned, mode switched).</summary>
+        public void Wake()
+        {
+            nextWork = 0;
+            idleChecks = 0;
+            beltFedCheckedAt = -99999;
         }
 
         private void TickSwing()
