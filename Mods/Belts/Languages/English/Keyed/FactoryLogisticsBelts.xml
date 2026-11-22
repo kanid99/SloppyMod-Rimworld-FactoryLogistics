@@ -84,4 +84,7 @@ Mover: moves anything at its gripper that its filter allows to the cell behind i
   <FactoryLogistics.ArmRotateDestination>Rotate destination</FactoryLogistics.ArmRotateDestination>
   <FactoryLogistics.ArmRotateDestinationDesc>Turn the side this arm puts things down on (marked by its tray) a quarter turn clockwise. It skips the gripper's side. Straight across or round a corner: the arm swings between whichever two sides you pick.</FactoryLogistics.ArmRotateDestinationDesc>
   <FactoryLogistics.WouldTake>the {0} would take it, but already has enough on its way</FactoryLogistics.WouldTake>
+  <FactoryLogistics.ArmCopyDesc>Copy this arm's settings: its mode, a Mover's "What to move" filter, Feeder priority, Return leftovers, and whether it puts down straight across or round a corner from its gripper.</FactoryLogistics.ArmCopyDesc>
+  <FactoryLogistics.ArmPasteDesc>Paste the copied arm settings onto this arm (or every selected arm). Its facing is kept; only which side it puts down on, relative to its gripper, is copied.</FactoryLogistics.ArmPasteDesc>
+  <FactoryLogistics.ArmCopied>Arm settings copied.</FactoryLogistics.ArmCopied>
 </LanguageData>

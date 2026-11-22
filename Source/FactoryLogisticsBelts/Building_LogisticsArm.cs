@@ -436,6 +436,33 @@ namespace FactoryLogistics.Belts
             return false;
         }
 
+        // ---- settings, for copy and paste
+        public bool ReturnLeftoversSetting
+        {
+            get { return returnLeftovers; }
+            set { returnLeftovers = value; }
+        }
+
+        public int PrioritySetting
+        {
+            get { return priority; }
+            set { priority = Mathf.Clamp(value, 1, 3); }
+        }
+
+        /// <summary>Where the destination is relative to the gripper: 1 a quarter turn clockwise, 2 straight across, 3 a quarter turn the other way.</summary>
+        public int DestinationTurn
+        {
+            get { return (OutputRot.AsInt - Rotation.AsInt + 4) % 4; }
+            set
+            {
+                int turn = value % 4;
+                if (turn == 0)
+                    turn = 2;
+                outputRot = (Rotation.AsInt + turn) % 4;
+                Wake();
+            }
+        }
+
         /// <summary>Look again soon: something about it changed (turned, mode switched).</summary>
         public void Wake()
         {
@@ -743,6 +770,26 @@ namespace FactoryLogistics.Belts
                 yield return filter;
             }
 
+            // Copy one arm's settings and paste them onto others (several at once).
+            Command_Action copy = new Command_Action();
+            copy.defaultLabel = "CommandCopyZoneSettingsLabel".Translate();
+            copy.defaultDesc = "FactoryLogistics.ArmCopyDesc".Translate();
+            copy.icon = ContentFinder<Texture2D>.Get("UI/Commands/CopySettings");
+            copy.action = delegate { ArmClipboard.Copy(this); };
+            copy.hotKey = KeyBindingDefOf.Misc4;
+            yield return copy;
+
+            if (ArmClipboard.HasCopy)
+            {
+                Command_Action paste = new Command_Action();
+                paste.defaultLabel = "CommandPasteZoneSettingsLabel".Translate();
+                paste.defaultDesc = "FactoryLogistics.ArmPasteDesc".Translate();
+                paste.icon = ContentFinder<Texture2D>.Get("UI/Commands/PasteSettings");
+                paste.action = delegate { ArmClipboard.PasteOnto(this); };
+                paste.hotKey = KeyBindingDefOf.Misc5;
+                yield return paste;
+            }
+
             // Source (gripper) and destination sides turn separately, so an arm can pass things
             // straight across or round a corner.
             Command_Action rotSource = new Command_Action();
@@ -845,6 +892,53 @@ namespace FactoryLogistics.Belts
             Widgets.Label(new Rect(0f, 36f, inRect.width, 44f), "FactoryLogistics.MoveFilterHint".Translate());
             Rect list = new Rect(0f, 84f, inRect.width, inRect.height - 84f - CloseButSize.y - 12f);
             ThingFilterUI.DoThingFilterConfigWindow(list, state, arm.MoveFilter, null, 1, map: arm.Map);
+        }
+    }
+}
+
+namespace FactoryLogistics.Belts
+{
+    /// <summary>One copied arm's settings, pasted onto any number of others.</summary>
+    public static class ArmClipboard
+    {
+        private static bool has;
+        private static ArmMode mode;
+        private static int priority;
+        private static bool returnLeftovers;
+        private static int destinationTurn;
+        private static readonly ThingFilter moveFilter = new ThingFilter();
+
+        public static bool HasCopy
+        {
+            get { return has; }
+        }
+
+        public static void Copy(Building_LogisticsArm arm)
+        {
+            has = true;
+            mode = arm.Mode;
+            priority = arm.PrioritySetting;
+            returnLeftovers = arm.ReturnLeftoversSetting;
+            destinationTurn = arm.DestinationTurn;
+            moveFilter.CopyAllowancesFrom(arm.MoveFilter);
+            Messages.Message("FactoryLogistics.ArmCopied".Translate(), arm, MessageTypeDefOf.SilentInput, false);
+        }
+
+        public static void PasteOnto(Building_LogisticsArm arm)
+        {
+            if (!has)
+                return;
+            arm.SetMode(mode);
+            arm.PrioritySetting = priority;
+            arm.ReturnLeftoversSetting = returnLeftovers;
+            arm.MoveFilter.CopyAllowancesFrom(moveFilter);
+            arm.DestinationTurn = destinationTurn;
+            if (arm.Spawned)
+            {
+                LogisticsManager manager = LogisticsManager.For(arm.Map);
+                if (manager != null)
+                    manager.MarkDirty();
+            }
         }
     }
 }
