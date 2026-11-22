@@ -838,8 +838,10 @@ namespace FactoryLogistics.Belts
             // A belt that ends at the Loader drops its items onto the Loader's own cell. Those are
             // passed straight on to the belt behind it, whatever they are: the line they came on
             // has nowhere else to go (a side line's tail returning its excess to a main line).
+            // Only when a belt really does end here: anything else lying under the arm (a
+            // machine's output spilling over, a pawn's drop) is not this Loader's to move.
             Building_Conveyor passOn = loader.OutputConveyor;
-            if (passOn != null)
+            if (passOn != null && loader.BeltEndsHere())
             {
                 List<Thing> dropped = new List<Thing>();
                 AddLoose(loader.Position, dropped);
@@ -1105,7 +1107,9 @@ namespace FactoryLogistics.Belts
             {
                 if (!group.parent.Accepts(thing))
                     continue;
-                IntVec3 cell = StoreCellFor(group, thing);
+                // A stockpile zone: back onto the gripper's own cell only, as it takes.
+                IntVec3 cell = group.parent is Building_Storage ? StoreCellFor(group, thing)
+                    : (arm.SourceCell.IsValidStorageFor(map, thing) ? arm.SourceCell : IntVec3.Invalid);
                 if (!cell.IsValid)
                     continue;
                 int d = cell.DistanceToSquared(arm.SourceCell);

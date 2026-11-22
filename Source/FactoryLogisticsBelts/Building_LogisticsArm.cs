@@ -427,7 +427,7 @@ namespace FactoryLogistics.Belts
         }
 
         // A belt whose end points at this arm drops its items onto it.
-        private bool BeltEndsHere()
+        public bool BeltEndsHere()
         {
             for (int i = 0; i < 4; i++)
             {
@@ -624,6 +624,19 @@ namespace FactoryLogistics.Belts
             }
 
             SlotGroup group = SourceCell.GetSlotGroup(map);
+            if (group != null && !(group.parent is Building_Storage))
+            {
+                // A stockpile zone: only what lies on the cell the gripper reaches. A zone can
+                // wrap round the arm, and reaching across all of it grabs things the player
+                // never pointed it at.
+                List<Thing> onCell = SourceCell.GetThingList(map);
+                for (int i = onCell.Count - 1; i >= 0; i--)
+                {
+                    if (onCell[i].def.category == ThingCategory.Item)
+                        yield return onCell[i];
+                }
+                yield break;
+            }
             if (group != null)
             {
                 foreach (SlotGroup g in StorageAround(group))
