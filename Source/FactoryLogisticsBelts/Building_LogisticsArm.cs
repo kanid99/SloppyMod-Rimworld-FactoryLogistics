@@ -61,6 +61,8 @@ namespace FactoryLogistics.Belts
         private Swing swing = Swing.Idle;
         private int swingStart;
         private bool returning;
+        // Why the leftover behind it is not being put back (Loader with Return leftovers on).
+        public string returnNote;
         private bool returnLeftovers = true;
         private ArmMode mode = ArmMode.Loader;
         private int priority = 2;
@@ -468,6 +470,7 @@ namespace FactoryLogistics.Belts
         {
             nextWork = 0;
             idleChecks = 0;
+            returnNote = null;
             beltFedCheckedAt = -99999;
         }
 
@@ -663,6 +666,15 @@ namespace FactoryLogistics.Belts
         // several buildings each with its own storage.
         private const int MaxStorageBuildings = 40;
 
+        /// <summary>The whole storage at the gripper (see StorageAround), or nothing.</summary>
+        public IEnumerable<SlotGroup> SourceStorage()
+        {
+            if (!Spawned || !SourceCell.InBounds(Map))
+                return Enumerable.Empty<SlotGroup>();
+            SlotGroup group = SourceCell.GetSlotGroup(Map);
+            return group == null ? Enumerable.Empty<SlotGroup>() : StorageAround(group);
+        }
+
         private IEnumerable<SlotGroup> StorageAround(SlotGroup start)
         {
             yield return start;
@@ -843,6 +855,8 @@ namespace FactoryLogistics.Belts
 
             if (!status.NullOrEmpty())
                 sb.AppendLine().Append(status);
+            if (!returnNote.NullOrEmpty())
+                sb.AppendLine().Append(returnNote);
 
             return sb.ToString().TrimEndNewlines();
         }

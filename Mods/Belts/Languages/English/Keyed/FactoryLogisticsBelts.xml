@@ -66,6 +66,10 @@ Mover: moves anything at its gripper that its filter allows to the cell behind i
   <FactoryLogistics.ReturnLeftovers>Return leftovers</FactoryLogistics.ReturnLeftovers>
   <FactoryLogistics.ReturnLeftoversDesc>When on, this Loader watches the belt behind it for items that no machine on that belt still needs - counting everything already on its way - and puts them back where it takes from: into its storage (if the storage accepts them and has room), or onto the belt at its gripper. On a looping belt, leftovers go home at the first Loader that can take them.</FactoryLogistics.ReturnLeftoversDesc>
   <FactoryLogistics.LoaderReturned>Returning {0}: no machine on its belt needs it.</FactoryLogistics.LoaderReturned>
+  <FactoryLogistics.LoaderKeepWanted>Leaving {0} on the belt: {1} on this line still needs it.</FactoryLogistics.LoaderKeepWanted>
+  <FactoryLogistics.LoaderKeepNotAccepted>Leaving {0} on the belt: the storage at the gripper does not accept it (check its storage settings).</FactoryLogistics.LoaderKeepNotAccepted>
+  <FactoryLogistics.LoaderKeepFull>Leaving {0} on the belt: the storage at the gripper has no room for it.</FactoryLogistics.LoaderKeepFull>
+  <FactoryLogistics.LoaderKeepBeltFull>Leaving {0} on the belt: no room on the belt at the gripper.</FactoryLogistics.LoaderKeepBeltFull>
   <FactoryLogistics.BeltDrop>Drop items</FactoryLogistics.BeltDrop>
   <FactoryLogistics.BeltDropDesc>Kick whatever this belt piece is carrying off it, onto the floor beside the line (never onto another belt or arm).</FactoryLogistics.BeltDropDesc>
   <FactoryLogistics.LoaderWatchingBelt>Watching the belt at its gripper for what its own belt needs: {0}.</FactoryLogistics.LoaderWatchingBelt>

@@ -827,6 +827,7 @@ namespace FactoryLogistics.Belts
         public void WorkLoader(Building_LogisticsArm loader)
         {
             EnsureBuilt();
+            loader.returnNote = null;
 
             // A belt that ends at the Loader drops its items onto the Loader's own cell. Those are
             // passed straight on to the belt behind it, whatever they are: the line they came on
@@ -1034,25 +1035,44 @@ namespace FactoryLogistics.Belts
         {
             if (belt.innerContainer == null || belt.innerContainer.Count == 0)
                 return false;
-            // Back to where it came from: the storage at its gripper, or the belt at its gripper
-            // (a Loader feeding a side line from a main line puts the side line's surplus back
-            // onto the main line).
+            // Back to where it came from: the storage at its gripper (the whole row of shelves),
+            // or the belt at its gripper (a Loader feeding a side line from a main line puts the
+            // side line's surplus back onto the main line).
             Building_Conveyor sourceBelt = loader.SourceConveyor;
             // Never back onto a belt that ends at this Loader: it would only come straight back.
             if (sourceBelt != null && sourceBelt.ForwardCell == loader.Position)
                 return false;
-            SlotGroup group = sourceBelt == null && loader.SourceCell.InBounds(map) ? loader.SourceCell.GetSlotGroup(map) : null;
-            if (group == null && sourceBelt == null)
-                return false;
-            if (sourceBelt != null && !sourceBelt.HasSpace())
+            List<SlotGroup> storage = sourceBelt == null ? loader.SourceStorage().ToList() : new List<SlotGroup>();
+            if (storage.Count == 0 && sourceBelt == null)
                 return false;
 
+            string note = null;
             foreach (Thing thing in belt.innerContainer.InnerListForReading.ToArray())
             {
-                if (group != null && (!group.parent.Accepts(thing) || StoreCellFor(group, thing) == IntVec3.Invalid))
+                string wantedBy;
+                if (!IsSurplus(thing, runs, out wantedBy))
+                {
+                    note = note ?? "FactoryLogistics.LoaderKeepWanted".Translate(thing.LabelShort, wantedBy).ToString();
                     continue;
-                if (!IsSurplus(thing, runs))
+                }
+                if (sourceBelt != null)
+                {
+                    if (!sourceBelt.HasSpace() || !sourceBelt.CanAcceptItem(thing))
+                    {
+                        note = note ?? "FactoryLogistics.LoaderKeepBeltFull".Translate(thing.LabelShort).ToString();
+                        continue;
+                    }
+                }
+                else if (!storage.Any(g => g.parent.Accepts(thing)))
+                {
+                    note = note ?? "FactoryLogistics.LoaderKeepNotAccepted".Translate(thing.LabelShort).ToString();
                     continue;
+                }
+                else if (!ReturnCellFor(loader, thing).IsValid)
+                {
+                    note = note ?? "FactoryLogistics.LoaderKeepFull".Translate(thing.LabelShort).ToString();
+                    continue;
+                }
 
                 string label = thing.LabelCap;
                 belt.innerContainer.Remove(thing);
@@ -1065,7 +1085,31 @@ namespace FactoryLogistics.Belts
                 loader.status = "FactoryLogistics.LoaderReturned".Translate(label);
                 return true;
             }
+            loader.returnNote = note;
             return false;
+        }
+
+        // A free cell anywhere in the storage at the arm's gripper that takes this item, nearest
+        // the gripper first, or Invalid.
+        private IntVec3 ReturnCellFor(Building_LogisticsArm arm, Thing thing)
+        {
+            IntVec3 best = IntVec3.Invalid;
+            int bestDist = int.MaxValue;
+            foreach (SlotGroup group in arm.SourceStorage())
+            {
+                if (!group.parent.Accepts(thing))
+                    continue;
+                IntVec3 cell = StoreCellFor(group, thing);
+                if (!cell.IsValid)
+                    continue;
+                int d = cell.DistanceToSquared(arm.SourceCell);
+                if (d < bestDist)
+                {
+                    best = cell;
+                    bestDist = d;
+                }
+            }
+            return best;
         }
 
         // A cell of the storage that can take this item now, or Invalid.
@@ -1084,6 +1128,13 @@ namespace FactoryLogistics.Belts
         // everything already on its way - this item included - is counted.
         private bool IsSurplus(Thing thing, List<BeltRun> runs)
         {
+            string wantedBy;
+            return IsSurplus(thing, runs, out wantedBy);
+        }
+
+        private bool IsSurplus(Thing thing, List<BeltRun> runs, out string wantedBy)
+        {
+            wantedBy = null;
             foreach (BeltRun run in runs)
             {
                 List<LogisticsNetwork> networks = new List<LogisticsNetwork>();
@@ -1104,7 +1155,11 @@ namespace FactoryLogistics.Belts
                             continue;
                         int excess = CountInFlight(network, need) - need.count;
                         if (excess < need.Units(thing))
+                        {
+                            Thing machine = network.consumer.thing;
+                            wantedBy = machine != null ? machine.LabelShort : network.feeder.LabelShort;
                             return false;
+                        }
                     }
                 }
             }
@@ -1395,8 +1450,7 @@ namespace FactoryLogistics.Belts
                 Building_Conveyor back = arm.SourceConveyor;
                 if (back != null)
                     return back.HasSpace() && back.CanAcceptItem(thing) && back.TryAdd(thing);
-                SlotGroup group = arm.SourceCell.InBounds(map) ? arm.SourceCell.GetSlotGroup(map) : null;
-                IntVec3 cell = group != null ? StoreCellFor(group, thing) : IntVec3.Invalid;
+                IntVec3 cell = ReturnCellFor(arm, thing);
                 return cell.IsValid && GenPlace.TryPlaceThing(thing, cell, map, ThingPlaceMode.Direct);
             }
             if (arm.Mode == ArmMode.Feeder || arm.Mode == ArmMode.Mover)
