@@ -202,6 +202,35 @@ namespace FactoryLogistics.Belts
         public void MarkDirty()
         {
             dirty = true;
+            armCellsAt = -99999;
+        }
+
+        // Cells some conveyor arm reaches into (its gripper or destination side). Belts leave a
+        // hopper on any of these to the arm.
+        private readonly HashSet<IntVec3> armCells = new HashSet<IntVec3>();
+        private int armCellsAt = -99999;
+
+        public bool ArmWorks(Building building)
+        {
+            int now = Find.TickManager.TicksGame;
+            if (now - armCellsAt >= 60 || now < armCellsAt)
+            {
+                armCellsAt = now;
+                armCells.Clear();
+                foreach (Building_LogisticsArm arm in AllOf<Building_LogisticsArm>(map))
+                {
+                    armCells.Add(arm.SourceCell);
+                    armCells.Add(arm.OutputCell);
+                }
+            }
+            if (armCells.Count == 0)
+                return false;
+            foreach (IntVec3 c in building.OccupiedRect())
+            {
+                if (armCells.Contains(c))
+                    return true;
+            }
+            return false;
         }
 
         public static Building_Conveyor ConveyorAt(IntVec3 cell, Map map)

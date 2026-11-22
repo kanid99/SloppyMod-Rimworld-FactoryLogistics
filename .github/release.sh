@@ -40,7 +40,10 @@ build() {
   vfef="$(download "https://raw.githubusercontent.com/Vanilla-Expanded/VanillaFurnitureExpanded-Factory/$VFEF_COMMIT/1.6/Assemblies/VanillaFurnitureExpandedFactory.dll" "VFEFactory-$VFEF_COMMIT.dll")"
   core=Assemblies/FactoryLogistics.dll
   compile "$core" Source/FactoryLogistics "$pipe"
-  compile Mods/Belts/Assemblies/FactoryLogisticsBelts.dll Source/FactoryLogisticsBelts "$pipe" "$vfef" "$core"
+  # Harmony comes from the Harmony mod at runtime (Vanilla Expanded Framework requires it):
+  # compiled against, never shipped.
+  local harmony; harmony="$(nuget Lib.Harmony 2.3.3 lib/net472/0Harmony.dll)"
+  compile Mods/Belts/Assemblies/FactoryLogisticsBelts.dll Source/FactoryLogisticsBelts "$pipe" "$vfef" "$core" "$harmony"
   local vf="https://raw.githubusercontent.com/SmashPhil/Vehicle-Framework/$VF_COMMIT/1.6/Assemblies"
   compile Mods/Vehicles/Assemblies/FactoryLogisticsVehicles.dll Source/FactoryLogisticsVehicles "$pipe" "$core" \
     "$(download "$vf/Vehicles.dll" "Vehicles-$VF_COMMIT.dll")" \

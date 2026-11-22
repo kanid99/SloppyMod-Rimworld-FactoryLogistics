@@ -43,10 +43,46 @@ namespace FactoryLogistics.Belts
             }
         }
 
+        // Whether VFE's pull from a factory hopper beside this belt is allowed (see HopperPullGuard).
+        public bool pullFromHoppers = true;
+
+        public override void PostExposeData()
+        {
+            base.PostExposeData();
+            Scribe_Values.Look(ref pullFromHoppers, "pullFromHoppers", true);
+        }
+
+        private bool HopperBeside()
+        {
+            if (!parent.Spawned)
+                return false;
+            for (int i = 0; i < 4; i++)
+            {
+                Building b = (parent.Position + GenAdj.CardinalDirections[i]).GetEdifice(parent.Map);
+                if (b is Building_FactoryHopper || (b != null && b.def.GetModExtension<PipeSystem.FactoryHopperExtension>()?.isfactoryHopper == true))
+                    return true;
+            }
+            return false;
+        }
+
         public override IEnumerable<Gizmo> CompGetGizmosExtra()
         {
             Building_Conveyor belt = Belt;
-            if (belt == null || belt.Faction != Faction.OfPlayer || belt.innerContainer == null || belt.innerContainer.Count == 0)
+            if (belt == null || belt.Faction != Faction.OfPlayer)
+                yield break;
+
+            if (!pullFromHoppers || HopperBeside())
+            {
+                Command_Toggle pull = new Command_Toggle();
+                pull.defaultLabel = "FactoryLogistics.BeltPullHoppers".Translate();
+                pull.defaultDesc = "FactoryLogistics.BeltPullHoppersDesc".Translate();
+                pull.icon = ContentFinder<Texture2D>.Get("Things/Building/FactoryHopper/FactoryHopper_Unset_south", false) ?? BaseContent.BadTex;
+                pull.isActive = delegate { return pullFromHoppers; };
+                pull.toggleAction = delegate { pullFromHoppers = !pullFromHoppers; };
+                yield return pull;
+            }
+
+            if (belt.innerContainer == null || belt.innerContainer.Count == 0)
                 yield break;
 
             Command_Action drop = new Command_Action();
