@@ -966,32 +966,66 @@ namespace FactoryLogistics.Belts
                 return;
             }
 
-            loader.status = ExplainNoStock(loader, network, missing);
+            loader.status = ExplainNoStock(loader, runs, missing);
         }
 
         // Why a Loader found nothing to send: an empty source, or what the machine says about the
         // first thing in it, so the player can see which setting to change.
-        private string ExplainNoStock(Building_LogisticsArm loader, LogisticsNetwork network, string missing)
+        private string ExplainNoStock(Building_LogisticsArm loader, List<BeltRun> runs, string missing)
         {
             if (loader.SourceConveyor != null)
                 return "FactoryLogistics.LoaderWatchingBelt".Translate(missing ?? "?");
-            Thing first = null;
-            foreach (Thing thing in loader.SourceThings())
-            {
-                first = thing;
-                break;
-            }
-            if (first == null)
+
+            List<Thing> stock = loader.SourceThings().ToList();
+            if (stock.Count == 0)
                 return "FactoryLogistics.LoaderSourceEmpty".Translate();
-            if (network != null && network.consumer != null && network.consumer.vfe == null)
+
+            // Machines on its belt that judge each item (the repair centre) can say why they will
+            // not take something: list a few different items with their reasons, so the one the
+            // player is wondering about is likely among them.
+            List<Consumer> judges = new List<Consumer>();
+            if (runs != null)
             {
-                string why = network.consumer.Refusal(first);
-                if (!why.NullOrEmpty())
-                    return "FactoryLogistics.LoaderRefused".Translate(network.consumer.thing.LabelShort, first.LabelShort, why);
-                if (first.IsForbidden(Faction.OfPlayer))
-                    return "FactoryLogistics.LoaderRefused".Translate(network.consumer.thing.LabelShort, first.LabelShort, "FactoryLogistics.ForbiddenItem".Translate());
+                foreach (BeltRun run in runs)
+                {
+                    LogisticsNetwork n = run as LogisticsNetwork;
+                    if (n != null && n.consumer != null && n.consumer.vfe == null && !judges.Contains(n.consumer))
+                        judges.Add(n.consumer);
+                }
             }
-            return "FactoryLogistics.LoaderNoStock".Translate(missing ?? "?");
+
+            string line = "FactoryLogistics.LoaderNoStock".Translate(missing ?? "?");
+            if (judges.Count == 0)
+                return line;
+
+            List<string> reasons = new List<string>();
+            HashSet<ThingDef> seen = new HashSet<ThingDef>();
+            foreach (Thing thing in stock)
+            {
+                if (reasons.Count >= 6 || !seen.Add(thing.def))
+                    continue;
+                string why;
+                if (!loader.CanTakeFromSource(thing))
+                    why = "FactoryLogistics.ForbiddenItem".Translate();
+                else
+                {
+                    why = null;
+                    foreach (Consumer judge in judges)
+                    {
+                        string r = judge.Refusal(thing);
+                        if (r.NullOrEmpty() && judge.Accepts(thing))
+                        {
+                            why = "FactoryLogistics.WouldTake".Translate(judge.thing.LabelShort);
+                            break;
+                        }
+                        if (why == null && !r.NullOrEmpty())
+                            why = judge.thing.LabelShort + ": " + r;
+                    }
+                }
+                if (!why.NullOrEmpty())
+                    reasons.Add(thing.LabelShort + " - " + why);
+            }
+            return reasons.Count == 0 ? line : line + "\n" + string.Join("\n", reasons.ToArray());
         }
 
         // Lifts the first surplus item on the belt behind the Loader and starts swinging it back to
