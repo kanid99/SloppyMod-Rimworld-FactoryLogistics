@@ -123,6 +123,8 @@ namespace FactoryLogistics.Belts
         public System.Predicate<Thing> accepts;
         public bool stacks;
         public string label;
+        // What asks for it, for the player: the machine's bill, or its storage settings.
+        public string source;
 
         public bool MatchesThing(Thing t)
         {
@@ -560,6 +562,7 @@ namespace FactoryLogistics.Belts
                         Need material = new Need();
                         material.thing = entry.thingDef;
                         material.count = entry.count;
+                        material.source = "FactoryLogistics.NeedSourceMaterials".Translate().ToString();
                         wanted.Add(material);
                     }
                 }
@@ -571,6 +574,7 @@ namespace FactoryLogistics.Belts
             need.stacks = true;
             need.count = consumer.Capacity;
             need.label = "FactoryLogistics.NeedAccepted".Translate(consumer.thing.LabelShort);
+            need.source = "FactoryLogistics.NeedSourceStorage".Translate().ToString();
             List<Need> needs = new List<Need>();
             if (need.count > 0)
                 needs.Add(need);
@@ -602,6 +606,7 @@ namespace FactoryLogistics.Belts
                 need.category = owner.ThingCategoryDef;
                 need.count = owner.Required;
                 need.disallowed = DisallowedFor(process, owner);
+                need.source = process.Def != null ? "FactoryLogistics.NeedSourceBill".Translate(process.Def.LabelCap).ToString() : null;
                 needs.Add(need);
             }
 
@@ -650,6 +655,7 @@ namespace FactoryLogistics.Belts
                     need.category = ingredient.thingCategory;
                     need.count = Mathf.Max(1, Mathf.CeilToInt(ingredient.countNeeded));
                     need.disallowed = ingredient.thingCategory != null ? ingredient.disallowedThingDefs : null;
+                    need.source = "FactoryLogistics.NeedSourceForever".Translate(def.LabelCap).ToString();
                     needs.Add(need);
                 }
                 if (needs.Count > 0)
@@ -1153,11 +1159,16 @@ namespace FactoryLogistics.Belts
                     {
                         if (!need.MatchesThing(thing))
                             continue;
-                        int excess = CountInFlight(network, need) - need.count;
+                        int inFlight = CountInFlight(network, need);
+                        int excess = inFlight - need.count;
                         if (excess < need.Units(thing))
                         {
                             Thing machine = network.consumer.thing;
-                            wantedBy = machine != null ? machine.LabelShort : network.feeder.LabelShort;
+                            string who = machine != null ? machine.LabelShort : network.feeder.LabelShort;
+                            int missing = Mathf.Max(1, need.count - inFlight + need.Units(thing));
+                            wantedBy = need.stacks
+                                ? "FactoryLogistics.WantedByStorage".Translate(who, missing).ToString()
+                                : "FactoryLogistics.WantedByDetail".Translate(who, need.source ?? "?", need.Label, missing, need.count).ToString();
                             return false;
                         }
                     }

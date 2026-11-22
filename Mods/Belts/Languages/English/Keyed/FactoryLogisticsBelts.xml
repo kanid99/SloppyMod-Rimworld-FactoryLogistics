@@ -66,7 +66,13 @@ Mover: moves anything at its gripper that its filter allows to the cell behind i
   <FactoryLogistics.ReturnLeftovers>Return leftovers</FactoryLogistics.ReturnLeftovers>
   <FactoryLogistics.ReturnLeftoversDesc>When on, this Loader watches the belt behind it for items that no machine on that belt still needs - counting everything already on its way - and puts them back where it takes from: into its storage (if the storage accepts them and has room), or onto the belt at its gripper. On a looping belt, leftovers go home at the first Loader that can take them.</FactoryLogistics.ReturnLeftoversDesc>
   <FactoryLogistics.LoaderReturned>Returning {0}: no machine on its belt needs it.</FactoryLogistics.LoaderReturned>
-  <FactoryLogistics.LoaderKeepWanted>Leaving {0} on the belt: {1} on this line still needs it.</FactoryLogistics.LoaderKeepWanted>
+  <FactoryLogistics.LoaderKeepWanted>Leaving {0} on the belt: {1}.</FactoryLogistics.LoaderKeepWanted>
+  <FactoryLogistics.WantedByDetail>{0} still needs it for {1}, which wants {2} ({3} of {4} still missing, counting this one)</FactoryLogistics.WantedByDetail>
+  <FactoryLogistics.WantedByStorage>{0} at the end of the line still takes it: its storage settings accept it and it has room for {1} more stacks</FactoryLogistics.WantedByStorage>
+  <FactoryLogistics.NeedSourceBill>bill "{0}"</FactoryLogistics.NeedSourceBill>
+  <FactoryLogistics.NeedSourceForever>Forever bill "{0}" (waiting for its first batch)</FactoryLogistics.NeedSourceForever>
+  <FactoryLogistics.NeedSourceMaterials>its current job</FactoryLogistics.NeedSourceMaterials>
+  <FactoryLogistics.NeedSourceStorage>its storage settings</FactoryLogistics.NeedSourceStorage>
   <FactoryLogistics.LoaderKeepNotAccepted>Leaving {0} on the belt: the storage at the gripper does not accept it (check its storage settings).</FactoryLogistics.LoaderKeepNotAccepted>
   <FactoryLogistics.LoaderKeepFull>Leaving {0} on the belt: the storage at the gripper has no room for it.</FactoryLogistics.LoaderKeepFull>
   <FactoryLogistics.LoaderKeepBeltFull>Leaving {0} on the belt: no room on the belt at the gripper.</FactoryLogistics.LoaderKeepBeltFull>
