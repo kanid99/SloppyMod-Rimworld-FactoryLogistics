@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using HarmonyLib;
 using System.Linq;
 using System.Reflection;
 using PipeSystem;
@@ -59,6 +60,10 @@ namespace FactoryLogistics.Belts
         public PropertyInfo capacityProp;
         public MethodInfo refusalMethod;
 
+        // A machine that loads its input into itself like vanilla's wastepack atomizer (a
+        // CompThingContainer: Vanilla Recycling Expanded's alloypack splitter, the atomizer...).
+        public CompThingContainer container;
+
         // A material spot (optional hook: IEnumerable<IntVec3> LogisticsResourceCells and
         // List<ThingDefCountClass> LogisticsMaterialNeeds(IntVec3 cell)): the consumer names the
         // exact materials and amounts still missing, and Loaders send exactly that much.
@@ -84,6 +89,8 @@ namespace FactoryLogistics.Belts
             }
             if (storage != null)
                 return storage.parent.Accepts(item);
+            if (container != null)
+                return LogisticsManager.ContainerAccepts(container, item);
             return false;
         }
 
@@ -491,6 +498,19 @@ namespace FactoryLogistics.Belts
                     hooked = Hooked(building, slot);
             }
 
+            if (hooked == null)
+            {
+                CompThingContainer box = ContainerAt(slot, map);
+                if (box != null)
+                {
+                    Consumer loaded = new Consumer();
+                    loaded.thing = box.parent;
+                    loaded.cell = slot;
+                    loaded.container = box;
+                    return loaded;
+                }
+            }
+
             if (hooked != null)
                 return hooked;
 
@@ -504,6 +524,64 @@ namespace FactoryLogistics.Belts
                 return storage;
             }
             return null;
+        }
+
+        // A machine that loads items into itself (CompThingContainer), reached at this cell: the
+        // machine's own body, or the interaction spot where a pawn would stand to load it.
+        public static CompThingContainer ContainerAt(IntVec3 cell, Map map)
+        {
+            if (map == null || !cell.InBounds(map))
+                return null;
+            Building building = cell.GetEdifice(map);
+            CompThingContainer box = building != null ? building.TryGetComp<CompThingContainer>() : null;
+            if (box != null)
+                return box;
+            foreach (IntVec3 c in GenAdj.CellsAdjacent8Way(new TargetInfo(cell, map)))
+            {
+                if (!c.InBounds(map))
+                    continue;
+                Building b = c.GetEdifice(map);
+                if (b == null || !b.def.hasInteractionCell || b.InteractionCell != cell)
+                    continue;
+                box = b.TryGetComp<CompThingContainer>();
+                if (box != null)
+                    return box;
+            }
+            return null;
+        }
+
+        private static readonly Dictionary<System.Type, FieldInfo> AutoLoadFields = new Dictionary<System.Type, FieldInfo>();
+
+        // Its own "auto-load" switch (the atomizer's and the splitter's), when it has one.
+        public static bool ContainerAutoLoad(CompThingContainer box)
+        {
+            System.Type type = box.GetType();
+            FieldInfo field;
+            if (!AutoLoadFields.TryGetValue(type, out field))
+            {
+                field = AccessTools.Field(type, "autoLoad");
+                if (field != null && field.FieldType != typeof(bool))
+                    field = null;
+                AutoLoadFields[type] = field;
+            }
+            return field == null || (bool)field.GetValue(box);
+        }
+
+        public static int ContainerSpace(CompThingContainer box)
+        {
+            return Mathf.Max(0, box.Props.stackLimit - box.TotalStackCount);
+        }
+
+        public static bool ContainerAccepts(CompThingContainer box, Thing item)
+        {
+            return item != null && ContainerAutoLoad(box) && ContainerSpace(box) > 0 && box.Accepts(item);
+        }
+
+        // Room left in the machine-with-a-container at an arm's output, or -1 if there is none.
+        private int ContainerRoom(Building_LogisticsArm arm)
+        {
+            CompThingContainer box = arm.OutputConveyor == null ? ContainerAt(arm.OutputCell, map) : null;
+            return box != null ? ContainerSpace(box) : -1;
         }
 
         private static Consumer Hooked(Building building, IntVec3 slot)
@@ -577,6 +655,22 @@ namespace FactoryLogistics.Belts
                 return new List<Need>();
             if (consumer.vfe != null)
                 return NeedsOf(consumer.vfe);
+
+            if (consumer.container != null)
+            {
+                List<Need> loads = new List<Need>();
+                CompThingContainer box = consumer.container;
+                int space = ContainerSpace(box);
+                if (space <= 0 || !ContainerAutoLoad(box))
+                    return loads;
+                Need load = new Need();
+                load.accepts = delegate (Thing t) { return box.Accepts(t); };
+                load.count = space;
+                load.label = "FactoryLogistics.NeedAccepted".Translate(consumer.thing.LabelShort);
+                load.source = "FactoryLogistics.NeedSourceLoad".Translate().ToString();
+                loads.Add(load);
+                return loads;
+            }
 
             if (consumer.materialsMethod != null)
             {
@@ -1257,7 +1351,8 @@ namespace FactoryLogistics.Belts
                     if (CanDeliver(feeder, thing))
                     {
                         string picked = thing.LabelCap;
-                        feeder.Pick(thing);
+                        int room = ContainerRoom(feeder);
+                        feeder.Pick(room > 0 && room < thing.stackCount ? thing.SplitOff(room) : thing);
                         feeder.status = "FactoryLogistics.FeederDelivered".Translate(picked);
                         return;     // one item per swing
                     }
@@ -1302,6 +1397,14 @@ namespace FactoryLogistics.Belts
                 }
 
                 string label = thing.LabelCap;
+                // A machine that loads into itself takes only so many: the rest rides on.
+                int room = ContainerRoom(feeder);
+                if (room > 0 && room < thing.stackCount)
+                {
+                    feeder.Pick(thing.SplitOff(room));
+                    feeder.status = "FactoryLogistics.FeederDelivered".Translate(label);
+                    return true;
+                }
                 belt.innerContainer.Remove(thing);
                 if (belt.innerContainer.Count == 0)
                 {
@@ -1405,6 +1508,9 @@ namespace FactoryLogistics.Belts
             Building_Conveyor slotBelt = feeder.OutputConveyor;
             if (slotBelt != null)
                 return slotBelt.HasSpace() && slotBelt.CanAcceptItem(thing);
+            CompThingContainer box = ContainerAt(feeder.OutputCell, map);
+            if (box != null)
+                return ContainerAccepts(box, thing);
             // A Mover putting into storage keeps to the storage's settings; a Feeder serves a
             // machine that has already said it wants the item.
             if (feeder.Mode == ArmMode.Mover)
@@ -1469,6 +1575,22 @@ namespace FactoryLogistics.Belts
             Building_Conveyor slotBelt = feeder.OutputConveyor;
             if (slotBelt != null)
                 return slotBelt.TryAdd(thing);
+
+            // Straight into a machine that loads items into itself; what does not fit stays in
+            // the gripper until there is room.
+            CompThingContainer box = ContainerAt(feeder.OutputCell, map);
+            if (box != null)
+            {
+                int space = ContainerSpace(box);
+                if (space < thing.stackCount)
+                {
+                    Thing part = thing.SplitOff(space);
+                    if (!box.innerContainer.TryAdd(part, true))
+                        thing.TryAbsorbStack(part, false);
+                    return false;
+                }
+                return box.innerContainer.TryAdd(thing, true);
+            }
 
             // A part-full stack on the spot takes what fits; the remainder stays in the gripper
             // (Release reports false, so the arm holds it and tries again).
